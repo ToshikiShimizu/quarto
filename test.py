@@ -345,8 +345,12 @@ class PolicyGradientPlayer(ComputerPlayer):
         self.get_state_code(state)
         x = np.array(list(self.state_code)).astype(np.float32).reshape(-1,self.IN)
         self.get_action_code(self.mlp.predict(x))
-        self.get_action_w(is_my_turn,self.action_code)
+
+        # if self.state_code == "111100001000000000000":
+        #     print (self.state_code,self.action_code)
         self.history.append([self.state_code,self.action_code])
+        self.get_action_w(is_my_turn,self.action_code)
+
     def get_state_code(self,state):#stateからkeyを生成
         IS_MY_TURN = 0
         PIECES_EXIST = 1
@@ -398,6 +402,7 @@ class PolicyGradientPlayer(ComputerPlayer):
         reward = [self.this_result * (self.gamma ** (len(self.history) - i - 1)) for i in range(len(self.history))]
         self.batch.extend(self.history)
         self.rewards.extend(reward)
+        #print (len(self.history),self.this_result)
 
     def clear_batch(self):
         self.batch = []
@@ -477,13 +482,13 @@ if __name__=="__main__":
     np.random.seed(1)
     TRIAL = 1000000
     SIZE = 2
-    p1,p2 = set_player("pg","pg",SIZE)
+    p1,p2 = set_player("pg","l",SIZE)
     SAVE = False
     LOAD = False
     test_p1 = True
     test_p2 = False
-    vs_Random = True
-    vs_Legal = True
+    vs_Random = False
+    vs_Legal = False
     if LOAD:
         p1 = joblib.load("p1.pkl")
         #p2 = joblib.load("p2.pkl")
