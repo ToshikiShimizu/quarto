@@ -339,7 +339,7 @@ class PolicyGradientPlayer(ComputerPlayer):
         idx = np.random.choice(len(pieces.exist))
         self.action_what = idx
 
-        self.decide_w(board,pieces,is_my_turn = True)
+        self.decide_w(board,pieces,is_my_turn = False)
     def decide_w(self,board,pieces,is_my_turn):
         state = pack_state(is_my_turn,pieces,board)
         self.get_state_code(state)
@@ -347,7 +347,11 @@ class PolicyGradientPlayer(ComputerPlayer):
         self.get_action_code(self.mlp.predict(x))
 
         # if self.state_code == "111100001000000000000":
+        # if self.state_code == "111100000100011000000":#01000000を渡せば必勝
         #     print (self.state_code,self.action_code)
+        # if self.state_code == "100100100110011000000":#正しく置けば必勝
+        #     print (self.state_code,self.action_code)
+
         self.history.append([self.state_code,self.action_code])
         self.get_action_w(is_my_turn,self.action_code)
 
@@ -369,7 +373,9 @@ class PolicyGradientPlayer(ComputerPlayer):
         self.state_code = "".join(f)
 
     def get_action_code(self,action):
+        #print (action.data[0])
         idx = np.random.choice(len(action.data[0]),1,p=action.data[0])
+        #print (idx)
         temp = np.zeros(len(action.data[0]),dtype=np.int32)
         temp[idx] = 1
         self.action_code =  "".join(temp.astype(np.str))
@@ -402,7 +408,9 @@ class PolicyGradientPlayer(ComputerPlayer):
         reward = [self.this_result * (self.gamma ** (len(self.history) - i - 1)) for i in range(len(self.history))]
         self.batch.extend(self.history)
         self.rewards.extend(reward)
-        #print (len(self.history),self.this_result)
+        # if self.this_result==-1:
+        #     #print (self.this_result,self.history[-1][-1])
+        #print ((self.history),self.this_result)
 
     def clear_batch(self):
         self.batch = []
@@ -410,36 +418,37 @@ class PolicyGradientPlayer(ComputerPlayer):
     def clear_history(self):
         self.history = []
     def update(self):
-        self.batch = np.array(self.batch)
+        if len(self.batch)==0:#初手に相手が反則した場合、一切の履歴がない
+            pass
+        else:
+            self.batch = np.array(self.batch)
+            self.mlp.cleargrads()
+            self.x = np.array([list(code) for code in self.batch[:,0]]).astype(np.float32)
+            self.target = np.array([list(code) for code in self.batch[:,1]]).astype(np.float32)
 
-        self.mlp.cleargrads()
-        self.x = np.array([list(code) for code in self.batch[:,0]]).astype(np.float32)
-        self.target = np.array([list(code) for code in self.batch[:,1]]).astype(np.float32)
-
-        self.target = np.argmax(self.target,axis=1).astype(np.int32)
+            self.target = np.argmax(self.target,axis=1).astype(np.int32)
 
 
-        #ls = [[] for i in range(6)]
-        # for i in range(len(self.x)):
-        #
-        #     loss = self.mlp(self.x[i].reshape(1,-1), self.target[i].reshape(1,-1))
-        #     loss.backward()
-        #     params = [self.mlp.l1.W.grad,self.mlp.l2.W.grad,self.mlp.l3.W.grad,self.mlp.l1.b.grad,self.mlp.l2.b.grad,self.mlp.l3.b.grad]
-        #     for j in range(len(params)):
-        #         ls[j].append(params[j] * self.rewards[i])
-        # for j, param in enumerate(params):
-        #     param = np.array(ls[j]).sum(axis=0)
-        #
-        # self.optimizer.update()
+            #ls = [[] for i in range(6)]
+            # for i in range(len(self.x)):
+            #
+            #     loss = self.mlp(self.x[i].reshape(1,-1), self.target[i].reshape(1,-1))
+            #     loss.backward()
+            #     params = [self.mlp.l1.W.grad,self.mlp.l2.W.grad,self.mlp.l3.W.grad,self.mlp.l1.b.grad,self.mlp.l2.b.grad,self.mlp.l3.b.grad]
+            #     for j in range(len(params)):
+            #         ls[j].append(params[j] * self.rewards[i])
+            # for j, param in enumerate(params):
+            #     param = np.array(ls[j]).sum(axis=0)
+            #
+            # self.optimizer.update()
 
-        loss = self.mlp(self.x, self.target)
-        loss.backward()
-        params = [self.mlp.l1.W.grad,self.mlp.l2.W.grad,self.mlp.l3.W.grad,self.mlp.l1.b.grad,self.mlp.l2.b.grad,self.mlp.l3.b.grad]
+            loss = self.mlp(self.x, self.target)
+            loss.backward()
+            params = [self.mlp.l1.W.grad,self.mlp.l2.W.grad,self.mlp.l3.W.grad,self.mlp.l1.b.grad,self.mlp.l2.b.grad,self.mlp.l3.b.grad]
+            for param in params:
+                param *= (self.this_result)#episodeの行動すべてに対して等しい値を用いる(AlphaGo)
 
-        for param in params:
-            param *= self.this_result#episodeの行動すべてに対して等しい値を用いる(AlphaGo)
-
-        self.optimizer.update()
+            self.optimizer.update()
 
 
 
@@ -481,14 +490,14 @@ if __name__=="__main__":
     source = f.read()
     np.random.seed(1)
     TRIAL = 1000000
-    SIZE = 2
-    p1,p2 = set_player("pg","l",SIZE)
+    SIZE = 4
+    p1,p2 = set_player("pg","pg",SIZE)
     SAVE = False
     LOAD = False
     test_p1 = True
     test_p2 = False
-    vs_Random = False
-    vs_Legal = False
+    vs_Random = True
+    vs_Legal = True
     if LOAD:
         p1 = joblib.load("p1.pkl")
         #p2 = joblib.load("p2.pkl")
@@ -501,11 +510,16 @@ if __name__=="__main__":
         p1.show_result()
         p2.show_result()
     else:
-        game = Game(p1,p2,SIZE)
-        for episode in range(TRIAL):
-            game.play()
-            if episode % 2000 == 0:
 
+        for episode in range(TRIAL):
+            #
+            #p2 = copy.deepcopy(p1)
+            game = Game(p1,p2,SIZE)
+            game.play()
+            # game = Game(p2,p1,SIZE)
+            # game.play()
+            if episode % 2000 == 0:
+                print ("episode",episode)
                 p1.show_result()
 
                 p2.show_result()
