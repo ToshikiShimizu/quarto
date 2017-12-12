@@ -303,157 +303,50 @@ class LegalPlayer(ComputerPlayer):
             if pieces.exist[idx]:
                 break
         self.action_what = idx
-class DQNPlayer(ComputerPlayer):
+
+class PolicyGradientPlayer(ComputerPlayer):
     def __init__(self, name, size):
         super().__init__(name, size)
+        self.batch = []
+        self.history = []
+        self.rewards = []
+        self.this_result = None
         self.IN  = 1+2**(self.SIZE+1)+self.SIZE**2+self.SIZE**3
         self.OUT = 2**self.SIZE + self.SIZE**2
-
         self.mlp = MLP(self.IN, self.OUT)
         #self.optimizer = optimizers.RMSpropGraves(lr=0.0025)
         self.optimizer = optimizers.SGD(lr=0.0025)
         #self.optimizer = optimizers.Adam(0.0025)
         #self.optimizer = optimizers.MomentumSGD(lr=0.0025)
         self.optimizer.setup(self.mlp)
-        self.target_mlp = copy.deepcopy(self.mlp)
-        self.time = 0
-        self.REPLAY_MEMORY_SIZE = 1000*1000
-        self.TARGET_FREQUENCY = 10000#10000
-        self.BATCH_SIZE = 32
-        self.train_mode = True
-        str_size = max(self.IN,self.OUT)
-        dim = len(["s","a","r","s_dash"])
-        self.D = np.zeros((self.REPLAY_MEMORY_SIZE,dim),dtype='|U'+str(str_size))
-        self.epsilon = 1
-        self.START_SIZE = 50000#50000 >=BATCH_SIZE
-
-        self.STATE = 0
-        self.ACTION = 1
-        self.REWARD = 2
-        self.S_DASH = 3
-        self.cnt_legal = 0
-        self.cnt_illegal = 0
-
         self.gamma = 0.99
-        self.r_j = 0
     def win(self):
         self.n_win += 1
-        self.reward = 1
+        self.this_result = 1
     def lose(self):
         self.n_lose += 1
-        self.reward = -1
+        self.this_result = -1
     def draw(self):
         self.n_draw += 1
-        self.reward = 0
-
-    def store_transition(self,transition):#TODO change name
-        if self.train_mode:
-            self.D[self.time%self.REPLAY_MEMORY_SIZE] = transition
-
-            self.time += 1
-            if self.time == self.START_SIZE:
-                self.START_EPISODE = episode
-            if self.time > self.START_SIZE:
-                self.epsilon = 1-((episode - self.START_EPISODE)*0.9)/(TRIAL - self.START_EPISODE)#TODO episode,TRIALの呼び出しを後で直す
-            if self.time % self.TARGET_FREQUENCY == 0:
-                self.target_mlp = copy.deepcopy(self.mlp)
-        else:
-            self.epsilon = 0
-
-
-    def update(self):
-        #print ("update")
-        current_memory_size = min(self.time,self.REPLAY_MEMORY_SIZE)
-        #print ("c:",current_memory_size)
-        if current_memory_size >= self.START_SIZE:
-            """
-            start_sizeに達するまではrandom-policy,以降はepsilon-greedy
-            """
-            idx = np.random.choice(current_memory_size,self.BATCH_SIZE,replace=False).astype(np.int)
-            self.get_target(self.D[idx])
-            self.get_one_hot(self.D[idx])
-            self.mlp.cleargrads()
-            loss = self.mlp(self.x, self.target,self.one_hot)
-            loss.backward()
-            self.optimizer.update()
-    def get_target(self,data):
-
-        #もしs_dashがENDであればrの値をそのままtarget_vectorとして上書きする
-
-        self.x = np.array([list(code) for code in data[:,self.STATE]]).astype(np.float32)
-        t = self.target_mlp.predict(self.x).data
-        max_t = np.max(t,axis=1)
-        # if (np.count_nonzero(t - max_t.reshape(-1,1)) != self.BATCH_SIZE * (2**self.SIZE + self.SIZE ** 2 -1)):
-        #     print ("multi max")#あくまで最大値がわかればよいので問題はない
-        mask = (data[:,self.S_DASH]=="END")
-        self.target = ((self.gamma *max_t + self.r_j)* np.logical_not(mask)  +  data[:,self.REWARD].astype(np.int) * mask).astype(np.float32).reshape(-1,1)
-
-    def get_one_hot(self,data):
-        self.one_hot = np.array([list(code) for code in data[:,self.ACTION]]).astype(np.float32)
-
-
-    def end_process(self,board,pieces):
-        if not(self.state_code_old is None):
-            if self.train_mode:
-                self.store_transition([self.state_code_old,self.action_code_old,str(self.reward),"END"])
-                self.update()
-            else:
-                pass
+        self.this_result = 0
     def decide_where_to_place(self, board, pieces):
+        idx1 = np.random.choice(board.exist.shape[0])
+        idx2 = np.random.choice(board.exist.shape[1])
+        self.action_where = [idx1,idx2]
+
         self.decide_w(board,pieces,is_my_turn = True)
-
-
     def decide_what_to_place(self, board, pieces):
-        self.decide_w(board,pieces,is_my_turn = False)
+        idx = np.random.choice(len(pieces.exist))
+        self.action_what = idx
 
+        self.decide_w(board,pieces,is_my_turn = True)
     def decide_w(self,board,pieces,is_my_turn):
         state = pack_state(is_my_turn,pieces,board)
-
         self.get_state_code(state)
         x = np.array(list(self.state_code)).astype(np.float32).reshape(-1,self.IN)
         self.get_action_code(self.mlp.predict(x))
-
-
-        # if self.state_code == "011110000000000000000":
-        #     print (self.action_code)
-        #     print (self.mlp.predict(x))
-
-        if np.random.rand() < self.epsilon:
-            temp = np.zeros(len(self.action_code),dtype=np.int).astype(np.str)
-            temp[np.random.randint(0,len(self.action_code))]="1"
-            self.action_code = "".join(temp)
-
-
-        if not(self.state_code_old is None):
-            self.store_transition([self.state_code_old,self.action_code_old,str(self.reward),self.state_code])
-            self.update()
-        self.state_code_old = self.state_code
-        self.action_code_old = self.action_code
-
-
-
-
         self.get_action_w(is_my_turn,self.action_code)
-
-
-    def get_action_w(self,is_my_turn,action_code):
-        #what,whereの順に記録されている
-        if is_my_turn:
-            temp = action_code[2**self.SIZE:].find("1")
-
-            if temp == -1:
-                self.action_where = None
-            else:
-                self.action_where = [int(temp/self.SIZE),temp%self.SIZE]
-        else:
-            self.action_what = action_code.find("1")
-            if self.action_what >= 2**self.SIZE:
-                self.action_what = None#Noneで上書き
-            else:
-                pass#そのまま
-
-
-
+        self.history.append([self.state_code,self.action_code])
     def get_state_code(self,state):#stateからkeyを生成
         IS_MY_TURN = 0
         PIECES_EXIST = 1
@@ -472,16 +365,77 @@ class DQNPlayer(ComputerPlayer):
         self.state_code = "".join(f)
 
     def get_action_code(self,action):
-        idx = argmax(action.data[0])#predictorは2次元配列を返すので、最初のベクトルを指定する必要がある
+        idx = np.random.choice(len(action.data[0]),1,p=action.data[0])
         temp = np.zeros(len(action.data[0]),dtype=np.int32)
         temp[idx] = 1
         self.action_code =  "".join(temp.astype(np.str))
 
 
-    def ready_play(self):
-        self.state_code_old = None
-        self.action_code_old = None
-        self.reward = 0
+
+    def get_action_w(self,is_my_turn,action_code):
+        #what,whereの順に記録されている
+        if is_my_turn:
+            temp = action_code[2**self.SIZE:].find("1")
+
+            if temp == -1:
+                self.action_where = None
+            else:
+                self.action_where = [int(temp/self.SIZE),temp%self.SIZE]
+        else:
+            self.action_what = action_code.find("1")
+            if self.action_what >= 2**self.SIZE:
+                self.action_what = None#Noneで上書き
+            else:
+                pass#そのまま
+    def end_process(self,board,pieces):
+        self.add_batch()
+        self.clear_history()
+        if (self.n_win+self.n_lose+self.n_draw) % 1 == 0:
+            self.update()
+            self.clear_batch()
+
+    def add_batch(self):
+        reward = [self.this_result * (self.gamma ** (len(self.history) - i - 1)) for i in range(len(self.history))]
+        self.batch.extend(self.history)
+        self.rewards.extend(reward)
+
+    def clear_batch(self):
+        self.batch = []
+        self.rewards = []
+    def clear_history(self):
+        self.history = []
+    def update(self):
+        self.batch = np.array(self.batch)
+
+        self.mlp.cleargrads()
+        self.x = np.array([list(code) for code in self.batch[:,0]]).astype(np.float32)
+        self.target = np.array([list(code) for code in self.batch[:,1]]).astype(np.float32)
+
+        self.target = np.argmax(self.target,axis=1).astype(np.int32)
+
+
+        #ls = [[] for i in range(6)]
+        # for i in range(len(self.x)):
+        #
+        #     loss = self.mlp(self.x[i].reshape(1,-1), self.target[i].reshape(1,-1))
+        #     loss.backward()
+        #     params = [self.mlp.l1.W.grad,self.mlp.l2.W.grad,self.mlp.l3.W.grad,self.mlp.l1.b.grad,self.mlp.l2.b.grad,self.mlp.l3.b.grad]
+        #     for j in range(len(params)):
+        #         ls[j].append(params[j] * self.rewards[i])
+        # for j, param in enumerate(params):
+        #     param = np.array(ls[j]).sum(axis=0)
+        #
+        # self.optimizer.update()
+
+        loss = self.mlp(self.x, self.target)
+        loss.backward()
+        params = [self.mlp.l1.W.grad,self.mlp.l2.W.grad,self.mlp.l3.W.grad,self.mlp.l1.b.grad,self.mlp.l2.b.grad,self.mlp.l3.b.grad]
+
+        for param in params:
+            param *= self.this_result#episodeの行動すべてに対して等しい値を用いる(AlphaGo)
+
+        self.optimizer.update()
+
 
 
 def argmax(ls):
@@ -503,6 +457,8 @@ def set_player(cap1,cap2,size):
             players.append(LegalPlayer("l"+n,size))
         elif cap == "d":
             players.append(DQNPlayer("d"+n,size))
+        elif cap == "pg":
+            players.append(PolicyGradientPlayer("pg"+n,size))
 
     return players[0],players[1]
 
@@ -516,13 +472,13 @@ def test_env(p1,p2,SIZE):
     p2.show_result()
 
 if __name__=="__main__":
-    f  = codecs.open('dqn.py', 'r', 'utf-8')
+    f  = codecs.open('test.py', 'r', 'utf-8')
     source = f.read()
     np.random.seed(1)
-    TRIAL = 1000000#1000000
-    SIZE = 4
-    p1,p2 = set_player("d","d",SIZE)
-    SAVE = True
+    TRIAL = 1000000
+    SIZE = 2
+    p1,p2 = set_player("pg","pg",SIZE)
+    SAVE = False
     LOAD = False
     test_p1 = True
     test_p2 = False
@@ -544,9 +500,9 @@ if __name__=="__main__":
         for episode in range(TRIAL):
             game.play()
             if episode % 2000 == 0:
-                print (p1.epsilon)
+
                 p1.show_result()
-                print (p2.epsilon)
+
                 p2.show_result()
                 if vs_Random:
                     if test_p1:
