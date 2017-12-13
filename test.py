@@ -315,10 +315,11 @@ class PolicyGradientPlayer(ComputerPlayer):
         self.OUT = 2**self.SIZE + self.SIZE**2
         self.mlp = MLP(self.IN, self.OUT)
         #self.optimizer = optimizers.RMSpropGraves(lr=0.0025)
-        self.optimizer = optimizers.SGD(lr=0.0025)
-        #self.optimizer = optimizers.Adam(0.0025)
-        #self.optimizer = optimizers.MomentumSGD(lr=0.0025)
+        #self.optimizer = optimizers.SGD(lr=0.00025)
+        self.optimizer = optimizers.Adam()
+        #self.optimizer = optimizers.MomentumSGD(lr=0.00025)
         self.optimizer.setup(self.mlp)
+        self.optimizer.add_hook(chainer.optimizer.WeightDecay(1e-3))
         self.gamma = 0.99
     def win(self):
         self.n_win += 1
@@ -513,13 +514,13 @@ if __name__=="__main__":
 
         for episode in range(TRIAL):
             #
-            #p2 = copy.deepcopy(p1)
+            p2 = copy.deepcopy(p1)
             game = Game(p1,p2,SIZE)
             game.play()
-            # game = Game(p2,p1,SIZE)
-            # game.play()
+            game = Game(p2,p1,SIZE)
+            game.play()
             if episode % 2000 == 0:
-                print ("episode",episode)
+                print ("episode sync adam",episode)
                 p1.show_result()
 
                 p2.show_result()
