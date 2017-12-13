@@ -15,9 +15,7 @@ import os
 from mlp import MLP
 import codecs
 """
-DQNの実装
-
-https://github.com/devsisters/DQN-tensorflow/blob/master/dqn/agent.py
+PolicyGradientによるQuartoAI
 
 """
 class Game:
@@ -317,7 +315,7 @@ class PolicyGradientPlayer(ComputerPlayer):
         self.mlp = MLP(self.IN, self.OUT)
         #self.optimizer = optimizers.RMSpropGraves(lr=0.0025)
         #self.optimizer = optimizers.SGD(lr=0.00025)
-        self.optimizer = optimizers.Adam()
+        self.optimizer = optimizers.Adam(alpha=1e-4)
         #self.optimizer = optimizers.MomentumSGD(lr=0.00025)
         self.optimizer.setup(self.mlp)
         self.optimizer.add_hook(chainer.optimizer.WeightDecay(1e-3))
@@ -517,7 +515,7 @@ if __name__=="__main__":
     source = f.read()
     np.random.seed(1)
     TRIAL = 1000000
-    SIZE = 3
+    SIZE = 4
     p1,p2 = set_player("pg","pg",SIZE)
     SAVE = False
     LOAD = False
