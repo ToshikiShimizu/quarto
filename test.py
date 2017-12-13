@@ -311,7 +311,8 @@ class PolicyGradientPlayer(ComputerPlayer):
         self.history = []
         self.rewards = []
         self.this_result = None
-        self.IN  = 1+2**(self.SIZE+1)+self.SIZE**2+self.SIZE**3
+        #self.IN  = 1+2**(self.SIZE+1)+self.SIZE**2+self.SIZE**3
+        self.IN  = 1+2**(self.SIZE+1)+(self.SIZE**2)*(2**self.SIZE+1)#one-hot attribute
         self.OUT = 2**self.SIZE + self.SIZE**2
         self.mlp = MLP(self.IN, self.OUT)
         #self.optimizer = optimizers.RMSpropGraves(lr=0.0025)
@@ -344,6 +345,8 @@ class PolicyGradientPlayer(ComputerPlayer):
     def decide_w(self,board,pieces,is_my_turn):
         state = pack_state(is_my_turn,pieces,board)
         self.get_state_code(state)
+        self.modify_state_code()#one-hot attribute
+
         x = np.array(list(self.state_code)).astype(np.float32).reshape(-1,self.IN)
         self.get_action_code(self.mlp.predict(x))
 
@@ -354,7 +357,17 @@ class PolicyGradientPlayer(ComputerPlayer):
         #     print (self.state_code,self.action_code)
 
         self.history.append([self.state_code,self.action_code])
+
+
         self.get_action_w(is_my_turn,self.action_code)
+
+    def modify_state_code(self):
+        a = self.state_code[:-(self.SIZE**2+self.SIZE**3)]
+        b = self.state_code[-(self.SIZE**2+self.SIZE**3):]
+        new_b = to_one_hot(b,self.SIZE)
+        #print (len(self.state_code))
+        self.state_code = a + new_b
+        #print (len(self.state_code))
 
     def get_state_code(self,state):#stateからkeyを生成
         IS_MY_TURN = 0
@@ -477,6 +490,19 @@ def set_player(cap1,cap2,size):
 
     return players[0],players[1]
 
+def to_one_hot(code,size):#existであれば文字列111を[0-10000000]に変換、そうでなければ[1-00000000]
+    exist = code[:size**2]
+    exist = np.array(list(exist))
+    attribute = code[size**2:]
+    one_hot = np.zeros((size**2,2**size+1),dtype=np.int)
+    attribute = np.array(list(attribute)).reshape(-1,size).astype(np.int)
+    w = [2**(size-i-1) for i in range(size)]
+    for i,c in enumerate(attribute):
+        if exist[i] == "0":
+            one_hot[i][0] = 1
+        else:
+            one_hot[i][2**size-c.dot(w)] = 1
+    return "".join(one_hot.flatten().astype(np.str))
 
 def test_env(p1,p2,SIZE):
     test = Game(p1,p2,SIZE)
@@ -491,7 +517,7 @@ if __name__=="__main__":
     source = f.read()
     np.random.seed(1)
     TRIAL = 1000000
-    SIZE = 4
+    SIZE = 3
     p1,p2 = set_player("pg","pg",SIZE)
     SAVE = False
     LOAD = False
@@ -520,7 +546,7 @@ if __name__=="__main__":
             game = Game(p2,p1,SIZE)
             game.play()
             if episode % 2000 == 0:
-                print ("episode sync adam",episode)
+                print ("episode sync adam one-hot",episode)
                 p1.show_result()
 
                 p2.show_result()
