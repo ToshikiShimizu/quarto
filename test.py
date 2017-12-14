@@ -309,15 +309,16 @@ class PolicyGradientPlayer(ComputerPlayer):
         self.history = []
         self.rewards = []
         self.this_result = None
+        self.accumulated_params = None
         self.IN  = 1+2**(self.SIZE+1)+self.SIZE**2+self.SIZE**3
         if ONE_HOT_ATTRIBUTE:
             self.IN  = 1+2**(self.SIZE+1)+(self.SIZE**2)*(2**self.SIZE+1)#one-hot attribute
         self.OUT = 2**self.SIZE + self.SIZE**2
         self.mlp = MLP(self.IN, self.OUT)
         #self.optimizer = optimizers.RMSpropGraves(lr=0.0025)
-        #self.optimizer = optimizers.SGD(lr=0.00025)
+        self.optimizer = optimizers.SGD(lr=0.01)
         #self.optimizer = optimizers.Adam(alpha=1e-4)
-        self.optimizer = optimizers.Adam()
+        #self.optimizer = optimizers.Adam()
         #self.optimizer = optimizers.MomentumSGD(lr=0.00025)
         self.optimizer.setup(self.mlp)
         self.optimizer.add_hook(chainer.optimizer.WeightDecay(1e-3))
@@ -419,7 +420,8 @@ class PolicyGradientPlayer(ComputerPlayer):
 
     def get_action_code(self,action):
         action_prob = action.data[0]
-        #action_prob = self.modify_action_prob(action_prob)
+        if MODIFY_PROB:
+            action_prob = self.modify_action_prob(action_prob)
 
         idx = np.random.choice(len(action.data[0]),1,p=action_prob)
         #print (idx)
@@ -497,14 +499,22 @@ class PolicyGradientPlayer(ComputerPlayer):
             loss = self.mlp(self.x, self.target)
             loss.backward()
             params = [self.mlp.l1.W.grad,self.mlp.l2.W.grad,self.mlp.l3.W.grad,self.mlp.l1.b.grad,self.mlp.l2.b.grad,self.mlp.l3.b.grad]
-            
+
             for param in params:
                 param *= (self.this_result)#episodeの行動すべてに対して等しい値を用いる(AlphaGo)
 
+            if self.accumulated_params is None:
+                self.accumulated_params = copy.deepcopy(params)
+            else:
+                for acc,param in zip(self.accumulated_params,params):
+                    acc += param
 
 
-
-            self.optimizer.update()
+            #self.optimizer.update()
+    def true_update(self,n):
+        self.mlp.l1.W.grad,self.mlp.l2.W.grad,self.mlp.l3.W.grad,self.mlp.l1.b.grad,self.mlp.l2.b.grad,self.mlp.l3.b.grad = [param/n for param in self.accumulated_params]
+        self.optimizer.update()
+        self.accumulated_params = None
 
 
 
@@ -556,19 +566,20 @@ def test_env(p1,p2,SIZE):
     p2.show_result()
 
 ONE_HOT_ATTRIBUTE = True
-AVOID_CORRELATION = False
+AVOID_CORRELATION = True
+MODIFY_PROB = True
 if __name__=="__main__":
     f  = codecs.open('test.py', 'r', 'utf-8')
     source = f.read()
     np.random.seed(1)
     TRIAL = 1000000
-    SIZE = 2
+    SIZE = 4
     p1,p2 = set_player("pg","pg",SIZE)
     SAVE = False
     LOAD = False
     test_p1 = True
     test_p2 = False
-    vs_Random = True
+    vs_Random = False
     vs_Legal = True
 
     if LOAD:
@@ -591,6 +602,8 @@ if __name__=="__main__":
             game.play()
             game = Game(p2,p1,SIZE)
             game.play()
+            if episode % 1 == 0:
+                p1.true_update(1)
             if episode % 100 == 0:
                 print ("episode sync adam",episode)
                 p1.show_result()
