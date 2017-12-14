@@ -528,7 +528,7 @@ def test_env(p1,p2,SIZE):
 
 ONE_HOT_ATTRIBUTE = False
 MODIFY_PROB = False
-Episode_size = 10
+Episode_size = 8#この数*各エピソードでの行動回数=バッチサイズ
 if __name__=="__main__":
     f  = codecs.open('test.py', 'r', 'utf-8')
     source = f.read()
@@ -557,13 +557,14 @@ if __name__=="__main__":
 
         for episode in range(TRIAL):
             p2 = copy.deepcopy(p1)
-            game = Game(p1,p2,SIZE)
-            game.play()
-            game = Game(p2,p1,SIZE)
+            if episode % 2 ==0:
+                game = Game(p1,p2,SIZE)
+            else:
+                game = Game(p2,p1,SIZE)
             game.play()
 
-            if episode % 100 == 0:
-                print ("episode 10 oh",episode)
+            if episode % 1000 == 0:
+                print ("episode 8",episode)
                 p1.show_result()
 
                 p2.show_result()
