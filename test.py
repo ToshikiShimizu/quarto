@@ -309,8 +309,8 @@ class PolicyGradientPlayer(ComputerPlayer):
         self.history = []
         self.rewards = []
         self.this_result = None
-        self.IN  = 1+2**(self.SIZE+1)+self.SIZE**2+self.SIZE**3
-        #self.IN  = 1+2**(self.SIZE+1)+(self.SIZE**2)*(2**self.SIZE+1)#one-hot attribute
+        #self.IN  = 1+2**(self.SIZE+1)+self.SIZE**2+self.SIZE**3
+        self.IN  = 1+2**(self.SIZE+1)+(self.SIZE**2)*(2**self.SIZE+1)#one-hot attribute
         self.OUT = 2**self.SIZE + self.SIZE**2
         self.mlp = MLP(self.IN, self.OUT)
         #self.optimizer = optimizers.RMSpropGraves(lr=0.0025)
@@ -341,10 +341,19 @@ class PolicyGradientPlayer(ComputerPlayer):
         self.action_what = idx
 
         self.decide_w(board,pieces,is_my_turn = False)
+
+    def get_legal_info(self):
+        #print (self.state_code)
+        self.legal_what = self.state_code[1:2**self.SIZE+1]
+        self.legal_what = np.array(list(self.legal_what)).astype(np.int)
+
+        self.illegal_where = self.state_code[1+2**(self.SIZE+1):1+2**(self.SIZE+1)+self.SIZE**2]
+        self.illegal_where = np.array(list(self.illegal_where)).astype(np.int)
     def decide_w(self,board,pieces,is_my_turn):
         state = pack_state(is_my_turn,pieces,board)
         self.get_state_code(state)
-        #self.modify_state_code()#one-hot attribute
+        self.get_legal_info()
+        self.modify_state_code()#one-hot attribute
 
         x = np.array(list(self.state_code)).astype(np.float32).reshape(-1,self.IN)
         self.get_action_code(self.mlp.predict(x))
@@ -385,9 +394,32 @@ class PolicyGradientPlayer(ComputerPlayer):
         f[BOARD_ATTRIBUTE] = "".join(state[BOARD_ATTRIBUTE].astype(np.int).astype(np.str).flatten())
         self.state_code = "".join(f)
 
+    def modify_action_prob(self,action_prob):
+        """
+        probの補正
+        """
+        epsilon = 1e-6#計算の安定化。合法手がすべて確率0で出力された場合ゼロ除算が発生する
+        if self.state_code[0]=="1":#自分の番ならwhereのみ選べる
+            action_prob += epsilon
+            action_prob[:2**self.SIZE]=0
+            action_prob[2**self.SIZE:]*=(self.illegal_where+1)%2
+            action_prob /= action_prob.sum()
+            #print (action_prob)
+        else:
+            action_prob += epsilon
+            action_prob[2**self.SIZE:]=0
+            action_prob[:2**self.SIZE]*=self.legal_what
+            action_prob /= action_prob.sum()
+            #print (action_prob)
+        return action_prob
+
+
+
     def get_action_code(self,action):
-        #print (action.data[0])
-        idx = np.random.choice(len(action.data[0]),1,p=action.data[0])
+        action_prob = action.data[0]
+        action_prob = modify_action_prob(action_prob)
+
+        idx = np.random.choice(len(action.data[0]),1,p=action_prob)
         #print (idx)
         temp = np.zeros(len(action.data[0]),dtype=np.int32)
         temp[idx] = 1
