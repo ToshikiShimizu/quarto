@@ -472,9 +472,14 @@ class PolicyGradientPlayer(ComputerPlayer):
             self.mlp.cleargrads()
             self.x = np.array([list(code) for code in self.batch[:,0]]).astype(np.float32)
             self.target = np.array([list(code) for code in self.batch[:,1]]).astype(np.float32)
+            self.target = np.where(self.target==1)[1].astype(np.int32)#networkに入力するために、one-hotからインデックスに変換
 
-            self.target = np.argmax(self.target,axis=1).astype(np.int32)
+            if AVOID_CORRELATION:
+                idx = np.random.choice(len(self.batch))
+                self.x = self.x[idx].reshape(1,-1)
+                self.target = self.target[idx].reshape(-1)
 
+            #
 
             #ls = [[] for i in range(6)]
             # for i in range(len(self.x)):
@@ -492,10 +497,15 @@ class PolicyGradientPlayer(ComputerPlayer):
             loss = self.mlp(self.x, self.target)
             loss.backward()
             params = [self.mlp.l1.W.grad,self.mlp.l2.W.grad,self.mlp.l3.W.grad,self.mlp.l1.b.grad,self.mlp.l2.b.grad,self.mlp.l3.b.grad]
+            
             for param in params:
                 param *= (self.this_result)#episodeの行動すべてに対して等しい値を用いる(AlphaGo)
 
+
+
+
             self.optimizer.update()
+
 
 
 
@@ -546,12 +556,13 @@ def test_env(p1,p2,SIZE):
     p2.show_result()
 
 ONE_HOT_ATTRIBUTE = True
+AVOID_CORRELATION = False
 if __name__=="__main__":
     f  = codecs.open('test.py', 'r', 'utf-8')
     source = f.read()
     np.random.seed(1)
     TRIAL = 1000000
-    SIZE = 3
+    SIZE = 2
     p1,p2 = set_player("pg","pg",SIZE)
     SAVE = False
     LOAD = False
@@ -581,7 +592,7 @@ if __name__=="__main__":
             game = Game(p2,p1,SIZE)
             game.play()
             if episode % 100 == 0:
-                print ("episode sync adam 4",episode)
+                print ("episode sync adam",episode)
                 p1.show_result()
 
                 p2.show_result()
