@@ -316,9 +316,9 @@ class PolicyGradientPlayer(ComputerPlayer):
         self.OUT = 2**self.SIZE + self.SIZE**2
         self.mlp = MLP(self.IN, self.OUT)
         #self.optimizer = optimizers.RMSpropGraves(lr=0.0025)
-        self.optimizer = optimizers.SGD(lr=0.01)
+        #self.optimizer = optimizers.SGD(lr=0.01)
         #self.optimizer = optimizers.Adam(alpha=1e-4)
-        #self.optimizer = optimizers.Adam()
+        self.optimizer = optimizers.Adam()
         #self.optimizer = optimizers.MomentumSGD(lr=0.00025)
         self.optimizer.setup(self.mlp)
         self.optimizer.add_hook(chainer.optimizer.WeightDecay(1e-3))
@@ -566,14 +566,15 @@ def test_env(p1,p2,SIZE):
     p2.show_result()
 
 ONE_HOT_ATTRIBUTE = True
-AVOID_CORRELATION = True
-MODIFY_PROB = True
+AVOID_CORRELATION = False
+MODIFY_PROB = False
+Episode_size = 10
 if __name__=="__main__":
     f  = codecs.open('test.py', 'r', 'utf-8')
     source = f.read()
     np.random.seed(1)
-    TRIAL = 1000000
-    SIZE = 4
+    TRIAL = 100000
+    SIZE = 3
     p1,p2 = set_player("pg","pg",SIZE)
     SAVE = False
     LOAD = False
@@ -581,7 +582,7 @@ if __name__=="__main__":
     test_p2 = False
     vs_Random = False
     vs_Legal = True
-
+    p2 = copy.deepcopy(p1)
     if LOAD:
         p1 = joblib.load("p1.pkl")
         #p2 = joblib.load("p2.pkl")
@@ -597,15 +598,16 @@ if __name__=="__main__":
 
         for episode in range(TRIAL):
             #
-            p2 = copy.deepcopy(p1)
+
             game = Game(p1,p2,SIZE)
             game.play()
             game = Game(p2,p1,SIZE)
             game.play()
             if episode % 1 == 0:
-                p1.true_update(1)
+                p1.true_update(Episode_size)
+                p2 = copy.deepcopy(p1)
             if episode % 100 == 0:
-                print ("episode sync adam",episode)
+                print ("episode 10 oh",episode)
                 p1.show_result()
 
                 p2.show_result()
