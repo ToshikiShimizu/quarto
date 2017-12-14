@@ -309,8 +309,8 @@ class PolicyGradientPlayer(ComputerPlayer):
         self.history = []
         self.rewards = []
         self.this_result = None
-        #self.IN  = 1+2**(self.SIZE+1)+self.SIZE**2+self.SIZE**3
-        self.IN  = 1+2**(self.SIZE+1)+(self.SIZE**2)*(2**self.SIZE+1)#one-hot attribute
+        self.IN  = 1+2**(self.SIZE+1)+self.SIZE**2+self.SIZE**3
+        #self.IN  = 1+2**(self.SIZE+1)+(self.SIZE**2)*(2**self.SIZE+1)#one-hot attribute
         self.OUT = 2**self.SIZE + self.SIZE**2
         self.mlp = MLP(self.IN, self.OUT)
         #self.optimizer = optimizers.RMSpropGraves(lr=0.0025)
@@ -343,7 +343,7 @@ class PolicyGradientPlayer(ComputerPlayer):
     def decide_w(self,board,pieces,is_my_turn):
         state = pack_state(is_my_turn,pieces,board)
         self.get_state_code(state)
-        self.modify_state_code()#one-hot attribute
+        #self.modify_state_code()#one-hot attribute
 
         x = np.array(list(self.state_code)).astype(np.float32).reshape(-1,self.IN)
         self.get_action_code(self.mlp.predict(x))
@@ -514,7 +514,7 @@ if __name__=="__main__":
     f  = codecs.open('test.py', 'r', 'utf-8')
     source = f.read()
     np.random.seed(1)
-    TRIAL = 1000000
+    TRIAL = 10000000
     SIZE = 4
     p1,p2 = set_player("pg","pg",SIZE)
     SAVE = False
@@ -544,7 +544,7 @@ if __name__=="__main__":
             game = Game(p2,p1,SIZE)
             game.play()
             if episode % 2000 == 0:
-                print ("episode sync adam one-hot",episode)
+                print ("episode sync adam 1e-4",episode)
                 p1.show_result()
 
                 p2.show_result()
