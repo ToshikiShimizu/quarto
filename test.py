@@ -315,7 +315,8 @@ class PolicyGradientPlayer(ComputerPlayer):
         self.mlp = MLP(self.IN, self.OUT)
         #self.optimizer = optimizers.RMSpropGraves(lr=0.0025)
         #self.optimizer = optimizers.SGD(lr=0.00025)
-        self.optimizer = optimizers.Adam(alpha=1e-4)
+        #self.optimizer = optimizers.Adam(alpha=1e-4)
+        self.optimizer = optimizers.Adam()
         #self.optimizer = optimizers.MomentumSGD(lr=0.00025)
         self.optimizer.setup(self.mlp)
         self.optimizer.add_hook(chainer.optimizer.WeightDecay(1e-3))
@@ -544,7 +545,7 @@ if __name__=="__main__":
             game = Game(p2,p1,SIZE)
             game.play()
             if episode % 2000 == 0:
-                print ("episode sync adam 1e-4",episode)
+                print ("episode sync adam",episode)
                 p1.show_result()
 
                 p2.show_result()
