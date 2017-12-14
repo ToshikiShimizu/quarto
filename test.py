@@ -520,21 +520,22 @@ def to_one_hot(code,size):#existであれば文字列111を[0-10000000]に変換
 
 def test_env(p1,p2,SIZE):
     test = Game(p1,p2,SIZE)
-    for i in range(1000):
+    for i in range(N_test):
         test.play()
     print ("TEST_ENV")
     p1.show_result()
     p2.show_result()
 
-ONE_HOT_ATTRIBUTE = False
+ONE_HOT_ATTRIBUTE = True
 MODIFY_PROB = False
-Episode_size = 8#この数*各エピソードでの行動回数=バッチサイズ
+Episode_size = 1#この数*各エピソードでの行動回数=バッチサイズ
+N_test = 1000
 if __name__=="__main__":
     f  = codecs.open('test.py', 'r', 'utf-8')
     source = f.read()
     np.random.seed(1)
-    TRIAL = 100000
-    SIZE = 3
+    TRIAL = 1000000
+    SIZE = 4
     p1,p2 = set_player("pg","pg",SIZE)
     SAVE = False
     LOAD = False
@@ -564,7 +565,7 @@ if __name__=="__main__":
             game.play()
 
             if episode % 1000 == 0:
-                print ("episode 8",episode)
+                print ("episode 1 OH",episode)
                 p1.show_result()
 
                 p2.show_result()
@@ -580,7 +581,7 @@ if __name__=="__main__":
                         t2 = copy.deepcopy(p2)
                         t2.clear_result()
                         t2.train_mode = False
-                        test_env
+                        test_env(t1,t2,SIZE)
                 if vs_Legal:
                     if test_p1:
                         t2 = LegalPlayer("l2",SIZE)
