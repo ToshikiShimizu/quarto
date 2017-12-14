@@ -26,7 +26,7 @@ class MLP(chainer.Chain):
     def __call__(self, x, t):
         h1 = F.relu(self.l1(x))
         h2 = F.relu(self.l2(h1))
-        return F.softmax_cross_entropy(self.l3(h2),t)
+        return F.softmax_cross_entropy(self.l3(h2),t,reduce="no")
 
     def predict(self, x):
         h1 = F.relu(self.l1(x))

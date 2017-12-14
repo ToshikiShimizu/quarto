@@ -316,9 +316,9 @@ class PolicyGradientPlayer(ComputerPlayer):
         self.OUT = 2**self.SIZE + self.SIZE**2
         self.mlp = MLP(self.IN, self.OUT)
         #self.optimizer = optimizers.RMSpropGraves(lr=0.0025)
-        self.optimizer = optimizers.SGD(lr=0.01)
+        #self.optimizer = optimizers.SGD(lr=0.01)
         #self.optimizer = optimizers.Adam(alpha=1e-4)
-        #self.optimizer = optimizers.Adam()
+        self.optimizer = optimizers.Adam()
         #self.optimizer = optimizers.MomentumSGD(lr=0.00025)
         self.optimizer.setup(self.mlp)
         self.optimizer.add_hook(chainer.optimizer.WeightDecay(1e-3))
@@ -449,7 +449,7 @@ class PolicyGradientPlayer(ComputerPlayer):
     def end_process(self,board,pieces):
         self.add_batch()
         self.clear_history()
-        if (self.n_win+self.n_lose+self.n_draw) % 1 == 0:
+        if (self.n_win+self.n_lose+self.n_draw) % Episode_size == 0:
             self.update()
             self.clear_batch()
 
@@ -457,9 +457,6 @@ class PolicyGradientPlayer(ComputerPlayer):
         reward = [self.this_result * (self.gamma ** (len(self.history) - i - 1)) for i in range(len(self.history))]
         self.batch.extend(self.history)
         self.rewards.extend(reward)
-        # if self.this_result==-1:
-        #     #print (self.this_result,self.history[-1][-1])
-        #print ((self.history),self.this_result)
 
     def clear_batch(self):
         self.batch = []
@@ -467,7 +464,7 @@ class PolicyGradientPlayer(ComputerPlayer):
     def clear_history(self):
         self.history = []
     def update(self):
-        if len(self.batch)==0:#初手に相手が反則した場合、一切の履歴がない
+        if len(self.batch)==0:#全てのゲームで初手に相手が反則した場合、一切の履歴がない
             pass
         else:
             self.batch = np.array(self.batch)
@@ -476,46 +473,11 @@ class PolicyGradientPlayer(ComputerPlayer):
             self.target = np.array([list(code) for code in self.batch[:,1]]).astype(np.float32)
             self.target = np.where(self.target==1)[1].astype(np.int32)#networkに入力するために、one-hotからインデックスに変換
 
-            if AVOID_CORRELATION:
-                idx = np.random.choice(len(self.batch))
-                self.x = self.x[idx].reshape(1,-1)
-                self.target = self.target[idx].reshape(-1)
-
-            #
-
-            #ls = [[] for i in range(6)]
-            # for i in range(len(self.x)):
-            #
-            #     loss = self.mlp(self.x[i].reshape(1,-1), self.target[i].reshape(1,-1))
-            #     loss.backward()
-            #     params = [self.mlp.l1.W.grad,self.mlp.l2.W.grad,self.mlp.l3.W.grad,self.mlp.l1.b.grad,self.mlp.l2.b.grad,self.mlp.l3.b.grad]
-            #     for j in range(len(params)):
-            #         ls[j].append(params[j] * self.rewards[i])
-            # for j, param in enumerate(params):
-            #     param = np.array(ls[j]).sum(axis=0)
-            #
-            # self.optimizer.update()
-
             loss = self.mlp(self.x, self.target)
+            self.rewards = np.array(self.rewards)
+            loss = F.mean(loss*self.rewards)#rewardsを要素ごとにかける
             loss.backward()
-            params = [self.mlp.l1.W.grad,self.mlp.l2.W.grad,self.mlp.l3.W.grad,self.mlp.l1.b.grad,self.mlp.l2.b.grad,self.mlp.l3.b.grad]
-
-            for param in params:
-                param *= (self.this_result)#episodeの行動すべてに対して等しい値を用いる(AlphaGo)
-
-            if self.accumulated_params is None:
-                self.accumulated_params = copy.deepcopy(params)
-            else:
-                for acc,param in zip(self.accumulated_params,params):
-                    acc += param
-
-            #self.optimizer.update()
-    def true_update(self,n):
-        self.mlp.l1.W.grad,self.mlp.l2.W.grad,self.mlp.l3.W.grad,self.mlp.l1.b.grad,self.mlp.l2.b.grad,self.mlp.l3.b.grad = [param/n for param in self.accumulated_params]
-        self.optimizer.update()
-        self.accumulated_params = None
-
-
+            self.optimizer.update()
 
 
 def argmax(ls):
@@ -564,15 +526,15 @@ def test_env(p1,p2,SIZE):
     p1.show_result()
     p2.show_result()
 
-ONE_HOT_ATTRIBUTE = True
-AVOID_CORRELATION = True
-MODIFY_PROB = True
+ONE_HOT_ATTRIBUTE = False
+MODIFY_PROB = False
+Episode_size = 10
 if __name__=="__main__":
     f  = codecs.open('test.py', 'r', 'utf-8')
     source = f.read()
     np.random.seed(1)
-    TRIAL = 1000000
-    SIZE = 4
+    TRIAL = 100000
+    SIZE = 3
     p1,p2 = set_player("pg","pg",SIZE)
     SAVE = False
     LOAD = False
@@ -580,7 +542,6 @@ if __name__=="__main__":
     test_p2 = False
     vs_Random = False
     vs_Legal = True
-
     if LOAD:
         p1 = joblib.load("p1.pkl")
         #p2 = joblib.load("p2.pkl")
@@ -595,16 +556,14 @@ if __name__=="__main__":
     else:
 
         for episode in range(TRIAL):
-            #
             p2 = copy.deepcopy(p1)
             game = Game(p1,p2,SIZE)
             game.play()
             game = Game(p2,p1,SIZE)
             game.play()
-            if episode % 1 == 0:
-                p1.true_update(1)
+
             if episode % 100 == 0:
-                print ("episode sync adam",episode)
+                print ("episode 10 oh",episode)
                 p1.show_result()
 
                 p2.show_result()
