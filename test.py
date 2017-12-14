@@ -309,8 +309,9 @@ class PolicyGradientPlayer(ComputerPlayer):
         self.history = []
         self.rewards = []
         self.this_result = None
-        #self.IN  = 1+2**(self.SIZE+1)+self.SIZE**2+self.SIZE**3
-        self.IN  = 1+2**(self.SIZE+1)+(self.SIZE**2)*(2**self.SIZE+1)#one-hot attribute
+        self.IN  = 1+2**(self.SIZE+1)+self.SIZE**2+self.SIZE**3
+        if ONE_HOT_ATTRIBUTE:
+            self.IN  = 1+2**(self.SIZE+1)+(self.SIZE**2)*(2**self.SIZE+1)#one-hot attribute
         self.OUT = 2**self.SIZE + self.SIZE**2
         self.mlp = MLP(self.IN, self.OUT)
         #self.optimizer = optimizers.RMSpropGraves(lr=0.0025)
@@ -353,7 +354,8 @@ class PolicyGradientPlayer(ComputerPlayer):
         state = pack_state(is_my_turn,pieces,board)
         self.get_state_code(state)
         self.get_legal_info()
-        self.modify_state_code()#one-hot attribute
+        if ONE_HOT_ATTRIBUTE:
+            self.modify_state_code()#one-hot attribute
 
         x = np.array(list(self.state_code)).astype(np.float32).reshape(-1,self.IN)
         self.get_action_code(self.mlp.predict(x))
@@ -417,7 +419,7 @@ class PolicyGradientPlayer(ComputerPlayer):
 
     def get_action_code(self,action):
         action_prob = action.data[0]
-        action_prob = modify_action_prob(action_prob)
+        #action_prob = self.modify_action_prob(action_prob)
 
         idx = np.random.choice(len(action.data[0]),1,p=action_prob)
         #print (idx)
@@ -543,12 +545,13 @@ def test_env(p1,p2,SIZE):
     p1.show_result()
     p2.show_result()
 
+ONE_HOT_ATTRIBUTE = True
 if __name__=="__main__":
     f  = codecs.open('test.py', 'r', 'utf-8')
     source = f.read()
     np.random.seed(1)
-    TRIAL = 10000000
-    SIZE = 4
+    TRIAL = 1000000
+    SIZE = 3
     p1,p2 = set_player("pg","pg",SIZE)
     SAVE = False
     LOAD = False
@@ -556,6 +559,7 @@ if __name__=="__main__":
     test_p2 = False
     vs_Random = True
     vs_Legal = True
+
     if LOAD:
         p1 = joblib.load("p1.pkl")
         #p2 = joblib.load("p2.pkl")
@@ -576,8 +580,8 @@ if __name__=="__main__":
             game.play()
             game = Game(p2,p1,SIZE)
             game.play()
-            if episode % 2000 == 0:
-                print ("episode sync adam",episode)
+            if episode % 100 == 0:
+                print ("episode sync adam 4",episode)
                 p1.show_result()
 
                 p2.show_result()
