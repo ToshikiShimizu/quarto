@@ -309,8 +309,8 @@ class PolicyGradientPlayer(ComputerPlayer):
         self.history = []
         self.rewards = []
         self.this_result = None
-        self.IN  = 1+2**(self.SIZE+1)+self.SIZE**2+self.SIZE**3
-        #self.IN  = 1+2**(self.SIZE+1)+(self.SIZE**2)*(2**self.SIZE+1)#one-hot attribute
+        #self.IN  = 1+2**(self.SIZE+1)+self.SIZE**2+self.SIZE**3
+        self.IN  = 1+2**(self.SIZE+1)+(self.SIZE**2)*(2**self.SIZE+1)#one-hot attribute
         self.OUT = 2**self.SIZE + self.SIZE**2
         self.mlp = MLP(self.IN, self.OUT)
         #self.optimizer = optimizers.RMSpropGraves(lr=0.0025)
@@ -353,7 +353,7 @@ class PolicyGradientPlayer(ComputerPlayer):
         state = pack_state(is_my_turn,pieces,board)
         self.get_state_code(state)
         self.get_legal_info()
-        #self.modify_state_code()#one-hot attribute
+        self.modify_state_code()#one-hot attribute
 
         x = np.array(list(self.state_code)).astype(np.float32).reshape(-1,self.IN)
         self.get_action_code(self.mlp.predict(x))
@@ -394,9 +394,7 @@ class PolicyGradientPlayer(ComputerPlayer):
         f[BOARD_ATTRIBUTE] = "".join(state[BOARD_ATTRIBUTE].astype(np.int).astype(np.str).flatten())
         self.state_code = "".join(f)
 
-    def get_action_code(self,action):
-        action_prob = action.data[0]
-
+    def modify_action_prob(self,action_prob):
         """
         probの補正
         """
@@ -413,7 +411,13 @@ class PolicyGradientPlayer(ComputerPlayer):
             action_prob[:2**self.SIZE]*=self.legal_what
             action_prob /= action_prob.sum()
             #print (action_prob)
+        return action_prob
 
+
+
+    def get_action_code(self,action):
+        action_prob = action.data[0]
+        action_prob = modify_action_prob(action_prob)
 
         idx = np.random.choice(len(action.data[0]),1,p=action_prob)
         #print (idx)
