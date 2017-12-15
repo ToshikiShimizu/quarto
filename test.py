@@ -528,7 +528,7 @@ def test_env(p1,p2,SIZE):
 
 ONE_HOT_ATTRIBUTE = True
 MODIFY_PROB = False
-Episode_size = 16#この数*各エピソードでの行動回数=バッチサイズ
+Episode_size = 1#この数*各エピソードでの行動回数=バッチサイズ
 N_test = 1000
 if __name__=="__main__":
     f  = codecs.open('test.py', 'r', 'utf-8')
@@ -565,7 +565,7 @@ if __name__=="__main__":
             game.play()
 
             if episode % 1000 == 0:
-                print ("episode 16 OH",episode)
+                print ("episode 1 OH",episode)
                 p1.show_result()
 
                 p2.show_result()
