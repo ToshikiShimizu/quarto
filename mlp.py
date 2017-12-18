@@ -57,4 +57,6 @@ class CNN(chainer.Chain):
         x = x.reshape(-1,(2**(self.SIZE+1)+2),self.SIZE,self.SIZE)
         h1 = F.relu(self.l1(x))
         h2 = F.relu(self.l2(h1))
+        # print (self.l3(h2))
+        # print (F.softmax(self.l3(h2)))
         return (F.softmax(self.l3(h2)))

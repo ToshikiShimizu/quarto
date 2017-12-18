@@ -321,8 +321,8 @@ class PolicyGradientPlayer(ComputerPlayer):
             self.n_channel = 2*self.IN
 
 
-            self.mlp = CNN(self.n_channel, self.OUT, self.SIZE,chainer.initializers.HeNormal())
-            #self.mlp = CNN(self.IN, self.OUT, self.SIZE)
+            #self.mlp = CNN(self.n_channel, self.OUT, self.SIZE,chainer.initializers.HeNormal())
+            self.mlp = CNN(self.IN, self.OUT, self.SIZE)
 
         else:
             self.mlp = MLP(self.IN, self.OUT)
@@ -331,9 +331,9 @@ class PolicyGradientPlayer(ComputerPlayer):
         #self.optimizer = optimizers.SGD(lr=0.01)
         #self.optimizer = optimizers.Adam(alpha=1e-4)
         self.optimizer = optimizers.Adam()
-        #self.optimizer = optimizers.MomentumSGD(lr=0.00025)
+        #self.optimizer = optimizers.MomentumSGD(lr=1e-2)
         self.optimizer.setup(self.mlp)
-        self.optimizer.add_hook(chainer.optimizer.WeightDecay(1e-3))
+        self.optimizer.add_hook(chainer.optimizer.WeightDecay(1e-4))
 
         if GPU>=0:
             chainer.cuda.get_device(GPU).use()
@@ -372,6 +372,7 @@ class PolicyGradientPlayer(ComputerPlayer):
         state = pack_state(is_my_turn,pieces,board)
         self.get_state_code(state)
         self.get_legal_info()
+        state_code = self.state_code#CNNの場合書き換わってしまうのでバックアップ
         if ONE_HOT_ATTRIBUTE:
             self.modify_state_code()#one-hot attribute
             if USE_CNN:
@@ -380,7 +381,7 @@ class PolicyGradientPlayer(ComputerPlayer):
         x = np.array(list(self.state_code)).astype(np.float32).reshape(-1,self.IN)
         x = xp.array(x)
 
-        self.get_action_code(self.mlp.predict(x))
+        self.get_action_code(self.mlp.predict(x),state_code)
 
         # if self.state_code == "111100001000000000000":
         # if self.state_code == "111100000100011000000":#01000000を渡せば必勝
@@ -418,15 +419,18 @@ class PolicyGradientPlayer(ComputerPlayer):
         f[BOARD_ATTRIBUTE] = "".join(state[BOARD_ATTRIBUTE].astype(np.int).astype(np.str).flatten())
         self.state_code = "".join(f)
 
-    def modify_action_prob(self,action_prob):
+    def modify_action_prob(self,action_prob,state_code):
         """
         probの補正
         """
-        epsilon = 1e-6#計算の安定化。合法手がすべて確率0で出力された場合ゼロ除算が発生する
-        if self.state_code[0]=="1":#自分の番ならwhereのみ選べる
+        epsilon = 1e-3#計算の安定化。合法手がすべて確率0で出力された場合ゼロ除算が発生する
+        if state_code[0]=="1":#自分の番ならwhereのみ選べる
             action_prob += epsilon
             action_prob[:2**self.SIZE]=0
             action_prob[2**self.SIZE:]*=(self.illegal_where+1)%2
+            # print (action_prob.dtype)
+            # print (action_prob.sum())
+
             action_prob /= action_prob.sum()
             #print (action_prob)
         else:
@@ -435,16 +439,18 @@ class PolicyGradientPlayer(ComputerPlayer):
             action_prob[:2**self.SIZE]*=self.legal_what
             action_prob /= action_prob.sum()
             #print (action_prob)
+
         return action_prob
 
 
 
-    def get_action_code(self,action):
+    def get_action_code(self,action,state_code):
         action_prob = action.data[0]
+
         if GPU >= 0:
             action_prob = chainer.cuda.to_cpu(action_prob)
         if MODIFY_PROB:
-            action_prob = self.modify_action_prob(action_prob)
+            action_prob = self.modify_action_prob(action_prob,state_code)
 
         idx = np.random.choice(len(action.data[0]),1,p=action_prob)
         #print (idx)
@@ -487,6 +493,17 @@ class PolicyGradientPlayer(ComputerPlayer):
     def clear_history(self):
         self.history = []
     def update(self):
+        if ONE_SAMPLE_PER_GAME:
+            if len(self.batch)==0:#全てのゲームで初手に相手が反則した場合、一切の履歴がない
+                pass
+            else:
+                idx = np.random.choice(len(self.batch))
+                self.batch = self.batch[idx:idx+1]
+                self.rewards = self.rewards[idx:idx+1]
+
+
+
+
         if len(self.batch)==0:#全てのゲームで初手に相手が反則した場合、一切の履歴がない
             pass
         else:
@@ -574,7 +591,8 @@ def test_env(p1,p2,SIZE):
 MODIFY_PROB = False
 ONE_HOT_ATTRIBUTE = True
 USE_CNN = True
-Episode_size = 16#この数*各エピソードでの行動回数=バッチサイズ
+ONE_SAMPLE_PER_GAME = False
+Episode_size = 256#この数*各エピソードでの行動回数=バッチサイズ
 N_test = 1000
 if __name__=="__main__":
     GPU = 0
@@ -607,10 +625,7 @@ if __name__=="__main__":
         p1.show_result()
         p2.show_result()
     else:
-
         for episode in range(TRIAL):
-
-
             if episode % 2 ==0:
                 game = Game(p1,p2,SIZE)
             else:
@@ -618,12 +633,8 @@ if __name__=="__main__":
             game.play()
             p2 = copy.deepcopy(p1)#本当は最初にコピーしたいが、そうするとgpu実行時にエラーがでてしまう
 
-
-
-
-
             if episode % 1000 == 0:
-                print ("episode 1",episode)
+                print ("episode",episode)
                 p1.show_result()
 
                 p2.show_result()
