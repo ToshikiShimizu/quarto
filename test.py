@@ -14,7 +14,7 @@ from chainer import cuda
 import os
 from mlp import MLP
 from mlp import CNN
-
+import cupy as cp
 import codecs
 """
 PolicyGradientによるQuartoAI
@@ -318,7 +318,11 @@ class PolicyGradientPlayer(ComputerPlayer):
         self.OUT = 2**self.SIZE + self.SIZE**2
         if USE_CNN:
             self.IN = (self.SIZE**2)*(2**(self.SIZE+1)+2)
-            self.mlp = CNN(self.IN, self.OUT, self.SIZE)
+            self.n_channel = 2*self.IN
+
+
+            self.mlp = CNN(self.n_channel, self.OUT, self.SIZE,chainer.initializers.HeNormal())
+            #self.mlp = CNN(self.IN, self.OUT, self.SIZE)
 
         else:
             self.mlp = MLP(self.IN, self.OUT)
@@ -330,6 +334,11 @@ class PolicyGradientPlayer(ComputerPlayer):
         #self.optimizer = optimizers.MomentumSGD(lr=0.00025)
         self.optimizer.setup(self.mlp)
         self.optimizer.add_hook(chainer.optimizer.WeightDecay(1e-3))
+
+        if GPU>=0:
+            chainer.cuda.get_device(GPU).use()
+            self.mlp.to_gpu()
+
         self.gamma = 0.99
     def win(self):
         self.n_win += 1
@@ -369,6 +378,8 @@ class PolicyGradientPlayer(ComputerPlayer):
                 self.get_image()
 
         x = np.array(list(self.state_code)).astype(np.float32).reshape(-1,self.IN)
+        x = xp.array(x)
+
         self.get_action_code(self.mlp.predict(x))
 
         # if self.state_code == "111100001000000000000":
@@ -430,6 +441,8 @@ class PolicyGradientPlayer(ComputerPlayer):
 
     def get_action_code(self,action):
         action_prob = action.data[0]
+        if GPU >= 0:
+            action_prob = chainer.cuda.to_cpu(action_prob)
         if MODIFY_PROB:
             action_prob = self.modify_action_prob(action_prob)
 
@@ -482,9 +495,10 @@ class PolicyGradientPlayer(ComputerPlayer):
             self.x = np.array([list(code) for code in self.batch[:,0]]).astype(np.float32)
             self.target = np.array([list(code) for code in self.batch[:,1]]).astype(np.float32)
             self.target = np.where(self.target==1)[1].astype(np.int32)#networkに入力するために、one-hotからインデックスに変換
-
+            self.x = xp.array(self.x)
+            self.target = xp.array(self.target)
             loss = self.mlp(self.x, self.target)
-            self.rewards = np.array(self.rewards)
+            self.rewards = xp.array(self.rewards)
             loss = F.mean(loss*self.rewards)#rewardsを要素ごとにかける
             loss.backward()
             self.optimizer.update()
@@ -557,13 +571,18 @@ def test_env(p1,p2,SIZE):
     p1.show_result()
     p2.show_result()
 
-ONE_HOT_ATTRIBUTE = True
 MODIFY_PROB = False
+ONE_HOT_ATTRIBUTE = True
 USE_CNN = True
-Episode_size = 1#この数*各エピソードでの行動回数=バッチサイズ
+Episode_size = 16#この数*各エピソードでの行動回数=バッチサイズ
 N_test = 1000
 if __name__=="__main__":
-
+    GPU = 0
+    if GPU >= 0:
+        xp = cp
+        cp.random.seed(0)
+    else:
+        xp = np
     f  = codecs.open('test.py', 'r', 'utf-8')
     source = f.read()
     np.random.seed(1)
@@ -590,12 +609,18 @@ if __name__=="__main__":
     else:
 
         for episode in range(TRIAL):
-            p2 = copy.deepcopy(p1)
+
+
             if episode % 2 ==0:
                 game = Game(p1,p2,SIZE)
             else:
                 game = Game(p2,p1,SIZE)
             game.play()
+            p2 = copy.deepcopy(p1)#本当は最初にコピーしたいが、そうするとgpu実行時にエラーがでてしまう
+
+
+
+
 
             if episode % 1000 == 0:
                 print ("episode 1",episode)
