@@ -13,6 +13,7 @@ import argparse
 from chainer import cuda
 import os
 from mlp import MLP
+from mlp import CNN
 import codecs
 """
 PolicyGradientによるQuartoAI
@@ -314,7 +315,12 @@ class PolicyGradientPlayer(ComputerPlayer):
         if ONE_HOT_ATTRIBUTE:
             self.IN  = 1+2**(self.SIZE+1)+(self.SIZE**2)*(2**self.SIZE+1)#one-hot attribute
         self.OUT = 2**self.SIZE + self.SIZE**2
-        self.mlp = MLP(self.IN, self.OUT)
+        if USE_CNN:
+            self.IN = (self.SIZE**2)*(2**(self.SIZE+1)+2)
+            self.mlp = CNN(self.IN, self.OUT)
+        else:
+            self.mlp = MLP(self.IN, self.OUT)
+
         #self.optimizer = optimizers.RMSpropGraves(lr=0.0025)
         #self.optimizer = optimizers.SGD(lr=0.01)
         #self.optimizer = optimizers.Adam(alpha=1e-4)
@@ -357,6 +363,8 @@ class PolicyGradientPlayer(ComputerPlayer):
         self.get_legal_info()
         if ONE_HOT_ATTRIBUTE:
             self.modify_state_code()#one-hot attribute
+            if USE_CNN:
+                self.get_image()
 
         x = np.array(list(self.state_code)).astype(np.float32).reshape(-1,self.IN)
         self.get_action_code(self.mlp.predict(x))
@@ -478,6 +486,27 @@ class PolicyGradientPlayer(ComputerPlayer):
             loss = F.mean(loss*self.rewards)#rewardsを要素ごとにかける
             loss.backward()
             self.optimizer.update()
+    def get_image(self):#CNN入力用に変換
+        #print (self.state_code)
+        #print (self.state_code[:1],self.state_code[1+2**self.SIZE:1+2**(self.SIZE+1)],self.state_code[-(2**self.SIZE+1)*(self.SIZE**2):])
+
+        selected_attribute = np.array(list(self.state_code[1+2**self.SIZE:1+2**(self.SIZE+1)])).astype(np.int32)
+        selected_attribute = np.insert(selected_attribute,0,(int(self.state_code[:1])+1)%2)
+        #print (selected_attribute)
+        temp = np.ones((self.SIZE,self.SIZE,1))
+        selected_attribute = temp*selected_attribute.reshape(1,1,-1)
+        #print (selected_attribute.shape)
+
+        attribute = np.array(list(self.state_code[-(2**self.SIZE+1)*(self.SIZE**2):])).astype(np.int32)
+        attribute  = attribute.reshape(self.SIZE,self.SIZE,-1)
+        #print (attribute)
+        #print (attribute.shape)
+        image =  np.concatenate((selected_attribute, attribute), axis=2)
+        #print (image.shape)
+        #print (image)
+        self.state_code = image
+
+
 
 
 def argmax(ls):
@@ -528,6 +557,7 @@ def test_env(p1,p2,SIZE):
 
 ONE_HOT_ATTRIBUTE = True
 MODIFY_PROB = False
+USE_CNN = True
 Episode_size = 1#この数*各エピソードでの行動回数=バッチサイズ
 N_test = 1000
 if __name__=="__main__":
@@ -535,7 +565,7 @@ if __name__=="__main__":
     source = f.read()
     np.random.seed(1)
     TRIAL = 1000000
-    SIZE = 4
+    SIZE = 2
     p1,p2 = set_player("pg","pg",SIZE)
     SAVE = False
     LOAD = False
