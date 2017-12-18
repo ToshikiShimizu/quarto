@@ -14,6 +14,7 @@ from chainer import cuda
 import os
 from mlp import MLP
 from mlp import CNN
+
 import codecs
 """
 PolicyGradientによるQuartoAI
@@ -317,7 +318,8 @@ class PolicyGradientPlayer(ComputerPlayer):
         self.OUT = 2**self.SIZE + self.SIZE**2
         if USE_CNN:
             self.IN = (self.SIZE**2)*(2**(self.SIZE+1)+2)
-            self.mlp = CNN(self.IN, self.OUT)
+            self.mlp = CNN(self.IN, self.OUT, self.SIZE)
+
         else:
             self.mlp = MLP(self.IN, self.OUT)
 
@@ -561,11 +563,12 @@ USE_CNN = True
 Episode_size = 1#この数*各エピソードでの行動回数=バッチサイズ
 N_test = 1000
 if __name__=="__main__":
+
     f  = codecs.open('test.py', 'r', 'utf-8')
     source = f.read()
     np.random.seed(1)
     TRIAL = 1000000
-    SIZE = 2
+    SIZE = 4
     p1,p2 = set_player("pg","pg",SIZE)
     SAVE = False
     LOAD = False
@@ -595,7 +598,7 @@ if __name__=="__main__":
             game.play()
 
             if episode % 1000 == 0:
-                print ("episode 1 OH",episode)
+                print ("episode 1",episode)
                 p1.show_result()
 
                 p2.show_result()
