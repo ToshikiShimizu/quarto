@@ -318,7 +318,7 @@ class PolicyGradientPlayer(ComputerPlayer):
         self.OUT = 2**self.SIZE + self.SIZE**2
         if USE_CNN:
             self.IN = (self.SIZE**2)*(2**(self.SIZE+1)+2)
-            self.n_channel = 2*self.IN
+            self.n_channel = 4*self.IN
 
 
             #self.mlp = CNN(self.n_channel, self.OUT, self.SIZE,chainer.initializers.HeNormal())
@@ -339,7 +339,7 @@ class PolicyGradientPlayer(ComputerPlayer):
             chainer.cuda.get_device(GPU).use()
             self.mlp.to_gpu()
 
-        self.gamma = 0.99
+        self.gamma = 0.5#0.99
     def win(self):
         self.n_win += 1
         self.this_result = 1
@@ -595,7 +595,7 @@ ONE_SAMPLE_PER_GAME = False
 Episode_size = 256#この数*各エピソードでの行動回数=バッチサイズ
 N_test = 1000
 if __name__=="__main__":
-    GPU = 0
+    GPU = -1
     if GPU >= 0:
         xp = cp
         cp.random.seed(0)
@@ -605,7 +605,7 @@ if __name__=="__main__":
     source = f.read()
     np.random.seed(1)
     TRIAL = 1000000
-    SIZE = 4
+    SIZE = 3
     p1,p2 = set_player("pg","pg",SIZE)
     SAVE = False
     LOAD = False
@@ -634,7 +634,7 @@ if __name__=="__main__":
             p2 = copy.deepcopy(p1)#本当は最初にコピーしたいが、そうするとgpu実行時にエラーがでてしまう
 
             if episode % 1000 == 0:
-                print ("episode",episode)
+                print ("episode 2t gamma0.5",episode)
                 p1.show_result()
 
                 p2.show_result()
