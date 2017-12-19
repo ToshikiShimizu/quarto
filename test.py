@@ -330,9 +330,9 @@ class PolicyGradientPlayer(ComputerPlayer):
             self.mlp = MLP(self.IN, self.OUT)
 
         #self.optimizer = optimizers.RMSpropGraves(lr=0.0025)
-        #self.optimizer = optimizers.SGD(lr=0.01)
+        self.optimizer = optimizers.SGD(lr=0.01)
         #self.optimizer = optimizers.Adam(alpha=1e-4)
-        self.optimizer = optimizers.Adam()
+        #self.optimizer = optimizers.Adam()
         #self.optimizer = optimizers.AdaGrad()
         #self.optimizer = optimizers.MomentumSGD(lr=2e-2)
         self.optimizer.setup(self.mlp)
@@ -605,7 +605,7 @@ MODIFY_PROB = False
 ONE_HOT_ATTRIBUTE = True
 USE_CNN = True
 ONE_SAMPLE_PER_GAME = False
-Episode_size = 64#この数*各エピソードでの行動回数=バッチサイズ
+Episode_size = 128#この数*各エピソードでの行動回数=バッチサイズ
 N_test = 1000
 if __name__=="__main__":
     GPU = -1
@@ -618,7 +618,7 @@ if __name__=="__main__":
     source = f.read()
     np.random.seed(1)
     TRIAL = 10000000
-    SIZE = 3
+    SIZE = 4
     p1,p2 = set_player("pg","pg",SIZE)
     SAVE = False
     LOAD = False
