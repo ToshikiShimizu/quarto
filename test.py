@@ -333,7 +333,8 @@ class PolicyGradientPlayer(ComputerPlayer):
         #self.optimizer = optimizers.SGD(lr=0.01)
         #self.optimizer = optimizers.Adam(alpha=1e-4)
         self.optimizer = optimizers.Adam()
-        #self.optimizer = optimizers.MomentumSGD(lr=1e-2)
+        #self.optimizer = optimizers.AdaGrad()
+        #self.optimizer = optimizers.MomentumSGD(lr=2e-2)
         self.optimizer.setup(self.mlp)
         self.optimizer.add_hook(chainer.optimizer.WeightDecay(1e-4))
 
@@ -382,7 +383,7 @@ class PolicyGradientPlayer(ComputerPlayer):
             if USE_CNN:
                 self.get_image()
         x = np.array(list(self.state_code)).astype(np.float32).reshape(-1,self.IN)
-    
+
         x = xp.array(x)
 
         self.get_action_code(self.mlp.predict(x),state_code)
@@ -604,7 +605,7 @@ MODIFY_PROB = False
 ONE_HOT_ATTRIBUTE = True
 USE_CNN = True
 ONE_SAMPLE_PER_GAME = False
-Episode_size = 256#この数*各エピソードでの行動回数=バッチサイズ
+Episode_size = 64#この数*各エピソードでの行動回数=バッチサイズ
 N_test = 1000
 if __name__=="__main__":
     GPU = -1
@@ -616,8 +617,8 @@ if __name__=="__main__":
     f  = codecs.open('test.py', 'r', 'utf-8')
     source = f.read()
     np.random.seed(1)
-    TRIAL = 1000000
-    SIZE = 2
+    TRIAL = 10000000
+    SIZE = 3
     p1,p2 = set_player("pg","pg",SIZE)
     SAVE = False
     LOAD = False
@@ -644,7 +645,7 @@ if __name__=="__main__":
                 game = Game(p2,p1,SIZE)
             game.play()
             p2 = copy.deepcopy(p1)#本当は最初にコピーしたいが、そうするとgpu実行時にエラーがでてしまう
-            if episode % 50000 == 49999:
+            if episode % 500000 == 499999:
                 p1.show()
 
             if episode % 1000 == 0:

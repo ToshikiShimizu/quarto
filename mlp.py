@@ -45,8 +45,8 @@ class CNN(chainer.Chain):
             self.l2 = L.Linear(None, n_units,initialW = initializer)  # n_in -> n_units
             self.l3 = L.Linear(None, n_out,initialW = initializer)  # n_units -> n_units
     def __call__(self, x, t):
-        x = x.reshape(-1,self.SIZE,self.SIZE,(2**(self.SIZE+1)+2))
-        x = x.transpose(0,3,1,2)
+        x = x.reshape(-1,self.SIZE,self.SIZE,(2**(self.SIZE+1)+2))#一旦vectorから画像に復元してから
+        x = x.transpose(0,3,1,2)#chainer cnnの順番に入れ替え
 
         h1 = F.relu(self.l1(x))
         #print (h1.shape)
