@@ -16,6 +16,8 @@ from mlp import MLP
 from mlp import CNN
 import cupy as cp
 import codecs
+import seaborn as sns
+import matplotlib.pyplot as plt
 """
 PolicyGradientによるQuartoAI
 
@@ -339,7 +341,7 @@ class PolicyGradientPlayer(ComputerPlayer):
             chainer.cuda.get_device(GPU).use()
             self.mlp.to_gpu()
 
-        self.gamma = 0.5#0.99
+        self.gamma = 1#0.99
     def win(self):
         self.n_win += 1
         self.this_result = 1
@@ -524,7 +526,7 @@ class PolicyGradientPlayer(ComputerPlayer):
         #print (self.state_code[:1],self.state_code[1+2**self.SIZE:1+2**(self.SIZE+1)],self.state_code[-(2**self.SIZE+1)*(self.SIZE**2):])
 
         selected_attribute = np.array(list(self.state_code[1+2**self.SIZE:1+2**(self.SIZE+1)])).astype(np.int32)
-        selected_attribute = np.insert(selected_attribute,0,(int(self.state_code[:1])+1)%2)
+        selected_attribute = np.insert(selected_attribute,0,(int(self.state_code[:1])+1)%2)#先頭にsub player flag
         #print (selected_attribute)
         temp = np.ones((self.SIZE,self.SIZE,1))
         selected_attribute = temp*selected_attribute.reshape(1,1,-1)
@@ -538,7 +540,14 @@ class PolicyGradientPlayer(ComputerPlayer):
         #print (image.shape)
         #print (image)
         self.state_code = image
-
+    def show(self):
+        weight = self.mlp.l1.W.data
+        if GPU >= 0:
+            weight = chainer.cuda.to_cpu(weight)
+        weight = weight.transpose(0,2,1,3)
+        weight = weight.reshape(weight.shape[0]*weight.shape[1],-1)
+        sns.heatmap(weight,cmap='gray')
+        plt.show()
 
 
 
@@ -595,7 +604,7 @@ ONE_SAMPLE_PER_GAME = False
 Episode_size = 256#この数*各エピソードでの行動回数=バッチサイズ
 N_test = 1000
 if __name__=="__main__":
-    GPU = -1
+    GPU = 0
     if GPU >= 0:
         xp = cp
         cp.random.seed(0)
@@ -605,7 +614,7 @@ if __name__=="__main__":
     source = f.read()
     np.random.seed(1)
     TRIAL = 1000000
-    SIZE = 3
+    SIZE = 4
     p1,p2 = set_player("pg","pg",SIZE)
     SAVE = False
     LOAD = False
@@ -632,9 +641,12 @@ if __name__=="__main__":
                 game = Game(p2,p1,SIZE)
             game.play()
             p2 = copy.deepcopy(p1)#本当は最初にコピーしたいが、そうするとgpu実行時にエラーがでてしまう
+            if episode % 50000 == 49999:
+                p1.show()
 
             if episode % 1000 == 0:
-                print ("episode 2t gamma0.5",episode)
+                print ("episode",episode)
+
                 p1.show_result()
 
                 p2.show_result()
