@@ -45,8 +45,9 @@ class CNN(chainer.Chain):
             self.l2 = L.Linear(None, n_units,initialW = initializer)  # n_in -> n_units
             self.l3 = L.Linear(None, n_out,initialW = initializer)  # n_units -> n_units
     def __call__(self, x, t):
-        x = x.reshape(-1,(2**(self.SIZE+1)+2),self.SIZE,self.SIZE)
-        #print (x.shape)
+        x = x.reshape(-1,self.SIZE,self.SIZE,(2**(self.SIZE+1)+2))
+        x = x.transpose(0,3,1,2)
+
         h1 = F.relu(self.l1(x))
         #print (h1.shape)
         h2 = F.relu(self.l2(h1))
@@ -54,7 +55,9 @@ class CNN(chainer.Chain):
         return F.softmax_cross_entropy(self.l3(h2),t,reduce="no")
 
     def predict(self, x):
-        x = x.reshape(-1,(2**(self.SIZE+1)+2),self.SIZE,self.SIZE)
+        x = x.reshape(-1,self.SIZE,self.SIZE,(2**(self.SIZE+1)+2))
+        x = x.transpose(0,3,1,2)
+
         h1 = F.relu(self.l1(x))
         h2 = F.relu(self.l2(h1))
         # print (self.l3(h2))

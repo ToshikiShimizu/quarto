@@ -375,12 +375,14 @@ class PolicyGradientPlayer(ComputerPlayer):
         self.get_state_code(state)
         self.get_legal_info()
         state_code = self.state_code#CNNの場合書き換わってしまうのでバックアップ
+
+
         if ONE_HOT_ATTRIBUTE:
             self.modify_state_code()#one-hot attribute
             if USE_CNN:
                 self.get_image()
-
         x = np.array(list(self.state_code)).astype(np.float32).reshape(-1,self.IN)
+    
         x = xp.array(x)
 
         self.get_action_code(self.mlp.predict(x),state_code)
@@ -532,6 +534,7 @@ class PolicyGradientPlayer(ComputerPlayer):
         selected_attribute = temp*selected_attribute.reshape(1,1,-1)
         #print (selected_attribute.shape)
 
+
         attribute = np.array(list(self.state_code[-(2**self.SIZE+1)*(self.SIZE**2):])).astype(np.int32)
         attribute  = attribute.reshape(self.SIZE,self.SIZE,-1)
         #print (attribute)
@@ -604,7 +607,7 @@ ONE_SAMPLE_PER_GAME = False
 Episode_size = 256#この数*各エピソードでの行動回数=バッチサイズ
 N_test = 1000
 if __name__=="__main__":
-    GPU = 0
+    GPU = -1
     if GPU >= 0:
         xp = cp
         cp.random.seed(0)
@@ -614,7 +617,7 @@ if __name__=="__main__":
     source = f.read()
     np.random.seed(1)
     TRIAL = 1000000
-    SIZE = 4
+    SIZE = 2
     p1,p2 = set_player("pg","pg",SIZE)
     SAVE = False
     LOAD = False
