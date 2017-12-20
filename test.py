@@ -70,11 +70,14 @@ class Game:
         if idx is None:#super illegal
             self.main_player.win()
             self.sub_player.lose()
+            self.sub_player.illegal()
             return False
 
         if pieces.exist[idx]==False:#illegal
             self.main_player.win()
             self.sub_player.lose()
+            self.sub_player.illegal()
+
             return False
 
         pieces.selected[idx] = True
@@ -85,11 +88,13 @@ class Game:
         board.selected = where
         if board.selected is None:
             self.main_player.lose()
+            self.main_player.illegal()
             self.sub_player.win()
             return False
 
         if board.exist[board.selected[0],board.selected[1]]:
             self.main_player.lose()
+            self.main_player.illegal()
             self.sub_player.win()
             return False
         board.exist[board.selected[0],board.selected[1]] = True
@@ -181,6 +186,8 @@ class Player:
         self.n_lose += 1
     def draw(self):
         self.n_draw += 1
+    def illegal(self):
+        pass
     def ready_play(self):
         pass
     def show_result(self):
@@ -330,9 +337,9 @@ class PolicyGradientPlayer(ComputerPlayer):
             self.mlp = MLP(self.IN, self.OUT)
 
         #self.optimizer = optimizers.RMSpropGraves(lr=0.0025)
-        self.optimizer = optimizers.SGD(lr=0.01)
+        #self.optimizer = optimizers.SGD(lr=0.01)
         #self.optimizer = optimizers.Adam(alpha=1e-4)
-        #self.optimizer = optimizers.Adam()
+        self.optimizer = optimizers.Adam()
         #self.optimizer = optimizers.AdaGrad()
         #self.optimizer = optimizers.MomentumSGD(lr=2e-2)
         self.optimizer.setup(self.mlp)
@@ -352,6 +359,10 @@ class PolicyGradientPlayer(ComputerPlayer):
     def draw(self):
         self.n_draw += 1
         self.this_result = 0
+    def illegal(self):
+        #self.n_lose += 1
+        self.this_result = -1
+
     def decide_where_to_place(self, board, pieces):
         idx1 = np.random.choice(board.exist.shape[0])
         idx2 = np.random.choice(board.exist.shape[1])
@@ -618,7 +629,7 @@ if __name__=="__main__":
     source = f.read()
     np.random.seed(1)
     TRIAL = 10000000
-    SIZE = 4
+    SIZE = 2
     p1,p2 = set_player("pg","pg",SIZE)
     SAVE = False
     LOAD = False
@@ -645,7 +656,7 @@ if __name__=="__main__":
                 game = Game(p2,p1,SIZE)
             game.play()
             p2 = copy.deepcopy(p1)#本当は最初にコピーしたいが、そうするとgpu実行時にエラーがでてしまう
-            if episode % 500000 == 499999:
+            if episode % 5000 == 4999:
                 p1.show()
 
             if episode % 1000 == 0:
