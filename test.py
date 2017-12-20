@@ -360,8 +360,8 @@ class PolicyGradientPlayer(ComputerPlayer):
         self.n_draw += 1
         self.this_result = 0
     def illegal(self):
-        #self.n_lose += 1
-        self.this_result = -1
+        pass
+        #self.this_result = -1
 
     def decide_where_to_place(self, board, pieces):
         idx1 = np.random.choice(board.exist.shape[0])
@@ -619,7 +619,7 @@ ONE_SAMPLE_PER_GAME = False
 Episode_size = 128#この数*各エピソードでの行動回数=バッチサイズ
 N_test = 1000
 if __name__=="__main__":
-    GPU = -1
+    GPU = 0
     if GPU >= 0:
         xp = cp
         cp.random.seed(0)
@@ -629,7 +629,7 @@ if __name__=="__main__":
     source = f.read()
     np.random.seed(1)
     TRIAL = 10000000
-    SIZE = 2
+    SIZE = 4
     p1,p2 = set_player("pg","pg",SIZE)
     SAVE = False
     LOAD = False
@@ -656,7 +656,7 @@ if __name__=="__main__":
                 game = Game(p2,p1,SIZE)
             game.play()
             p2 = copy.deepcopy(p1)#本当は最初にコピーしたいが、そうするとgpu実行時にエラーがでてしまう
-            if episode % 5000 == 4999:
+            if episode % 500000 == 499999:
                 p1.show()
 
             if episode % 1000 == 0:
