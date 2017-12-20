@@ -619,7 +619,7 @@ ONE_SAMPLE_PER_GAME = False
 Episode_size = 128#この数*各エピソードでの行動回数=バッチサイズ
 N_test = 1000
 if __name__=="__main__":
-    GPU = 0
+    GPU = -1
     if GPU >= 0:
         xp = cp
         cp.random.seed(0)
@@ -629,7 +629,7 @@ if __name__=="__main__":
     source = f.read()
     np.random.seed(1)
     TRIAL = 10000000
-    SIZE = 4
+    SIZE = 3
     p1,p2 = set_player("pg","pg",SIZE)
     SAVE = False
     LOAD = False
@@ -660,7 +660,7 @@ if __name__=="__main__":
                 p1.show()
 
             if episode % 1000 == 0:
-                print ("episode",episode)
+                print ("episode 3",episode)
 
                 p1.show_result()
 
