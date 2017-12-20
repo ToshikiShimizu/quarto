@@ -14,7 +14,7 @@ from chainer import cuda
 import os
 from mlp import MLP
 from mlp import CNN
-import cupy as cp
+#import cupy as cp
 import codecs
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -339,9 +339,9 @@ class PolicyGradientPlayer(ComputerPlayer):
         #self.optimizer = optimizers.RMSpropGraves(lr=0.0025)
         #self.optimizer = optimizers.SGD(lr=0.01)
         #self.optimizer = optimizers.Adam(alpha=1e-4)
-        self.optimizer = optimizers.Adam()
+        #self.optimizer = optimizers.Adam()
         #self.optimizer = optimizers.AdaGrad()
-        #self.optimizer = optimizers.MomentumSGD(lr=2e-2)
+        self.optimizer = optimizers.MomentumSGD(lr=1e-2)
         self.optimizer.setup(self.mlp)
         self.optimizer.add_hook(chainer.optimizer.WeightDecay(1e-4))
 
