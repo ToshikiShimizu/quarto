@@ -321,6 +321,7 @@ class PolicyGradientPlayer(ComputerPlayer):
         self.rewards = []
         self.this_result = None
         self.accumulated_params = None
+        self.train_mode = True
         self.IN  = 1+2**(self.SIZE+1)+self.SIZE**2+self.SIZE**3
         if ONE_HOT_ATTRIBUTE:
             self.IN  = 1+2**(self.SIZE+1)+(self.SIZE**2)*(2**self.SIZE+1)#one-hot attribute
@@ -339,9 +340,9 @@ class PolicyGradientPlayer(ComputerPlayer):
         #self.optimizer = optimizers.RMSpropGraves(lr=0.0025)
         #self.optimizer = optimizers.SGD(lr=0.01)
         #self.optimizer = optimizers.Adam(alpha=1e-4)
-        #self.optimizer = optimizers.Adam()
+        self.optimizer = optimizers.Adam()
         #self.optimizer = optimizers.AdaGrad()
-        self.optimizer = optimizers.MomentumSGD(lr=1e-2)
+        #self.optimizer = optimizers.MomentumSGD(lr=1e-2)
         self.optimizer.setup(self.mlp)
         self.optimizer.add_hook(chainer.optimizer.WeightDecay(1e-4))
 
@@ -492,11 +493,15 @@ class PolicyGradientPlayer(ComputerPlayer):
             else:
                 pass#そのまま
     def end_process(self,board,pieces):
-        self.add_batch()
-        self.clear_history()
-        if (self.n_win+self.n_lose+self.n_draw) % Episode_size == 0:
-            self.update()
-            self.clear_batch()
+        if self.train_mode:
+            self.add_batch()
+            self.clear_history()
+            if (self.n_win+self.n_lose+self.n_draw) % Episode_size == 0:
+                self.update()
+                self.clear_batch()
+        else:
+            pass
+        #print (self.n_win,self.n_draw,self.n_lose)
 
     def add_batch(self):
         reward = [self.this_result * (self.gamma ** (len(self.history) - i - 1)) for i in range(len(self.history))]
@@ -634,7 +639,7 @@ if __name__=="__main__":
     SAVE = False
     LOAD = False
     test_p1 = True
-    test_p2 = False
+    test_p2 = True
     vs_Random = False
     vs_Legal = True
     if LOAD:
@@ -650,17 +655,21 @@ if __name__=="__main__":
         p2.show_result()
     else:
         for episode in range(TRIAL):
+            # game = Game(p1,p2,SIZE)
+            # game.play()
+
             if episode % 2 ==0:
                 game = Game(p1,p2,SIZE)
             else:
                 game = Game(p2,p1,SIZE)
             game.play()
+
             p2 = copy.deepcopy(p1)#本当は最初にコピーしたいが、そうするとgpu実行時にエラーがでてしまう
             if episode % 500000 == 499999:
                 p1.show()
 
             if episode % 1000 == 0:
-                print ("episode 3",episode)
+                print ("episode 3 self",episode)
 
                 p1.show_result()
 
@@ -686,7 +695,7 @@ if __name__=="__main__":
                         t1.train_mode = False
                         test_env(t1,t2,SIZE)
                     if test_p2:
-                        t1 = RandomPlayer("r1",SIZE)
+                        t1 = RandomPlayer("l1",SIZE)
                         t2 = copy.deepcopy(p2)
                         t2.clear_result()
                         t2.train_mode = False
