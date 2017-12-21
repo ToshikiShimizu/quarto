@@ -14,7 +14,7 @@ from chainer import cuda
 import os
 from mlp import MLP
 from mlp import CNN
-#import cupy as cp
+
 import codecs
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -626,6 +626,7 @@ N_test = 1000
 if __name__=="__main__":
     GPU = -1
     if GPU >= 0:
+        import cupy as cp
         xp = cp
         cp.random.seed(0)
     else:
@@ -634,13 +635,13 @@ if __name__=="__main__":
     source = f.read()
     np.random.seed(1)
     TRIAL = 10000000
-    SIZE = 3
+    SIZE = 4
     p1,p2 = set_player("pg","pg",SIZE)
     SAVE = False
     LOAD = False
     test_p1 = True
-    test_p2 = True
-    vs_Random = False
+    test_p2 = False
+    vs_Random = True
     vs_Legal = True
     if LOAD:
         p1 = joblib.load("p1.pkl")
@@ -664,12 +665,12 @@ if __name__=="__main__":
                 game = Game(p2,p1,SIZE)
             game.play()
 
-            p2 = copy.deepcopy(p1)#本当は最初にコピーしたいが、そうするとgpu実行時にエラーがでてしまう
+            #p2 = copy.deepcopy(p1)#本当は最初にコピーしたいが、そうするとgpu実行時にエラーがでてしまう
             if episode % 500000 == 499999:
                 p1.show()
 
             if episode % 1000 == 0:
-                print ("episode 3 self",episode)
+                print ("episode pgpg",SIZE,episode)
 
                 p1.show_result()
 
@@ -695,7 +696,7 @@ if __name__=="__main__":
                         t1.train_mode = False
                         test_env(t1,t2,SIZE)
                     if test_p2:
-                        t1 = RandomPlayer("l1",SIZE)
+                        t1 = LegalPlayer("l1",SIZE)
                         t2 = copy.deepcopy(p2)
                         t2.clear_result()
                         t2.train_mode = False
