@@ -617,14 +617,14 @@ def test_env(p1,p2,SIZE):
     p1.show_result()
     p2.show_result()
 
-MODIFY_PROB = False
+MODIFY_PROB = True
 ONE_HOT_ATTRIBUTE = True
 USE_CNN = True
 ONE_SAMPLE_PER_GAME = False
 Episode_size = 128#この数*各エピソードでの行動回数=バッチサイズ
 N_test = 1000
 if __name__=="__main__":
-    GPU = -1
+    GPU = 0
     if GPU >= 0:
         import cupy as cp
         xp = cp
@@ -636,12 +636,12 @@ if __name__=="__main__":
     np.random.seed(1)
     TRIAL = 10000000
     SIZE = 4
-    p1,p2 = set_player("pg","pg",SIZE)
+    p1,p2 = set_player("pg","l",SIZE)
     SAVE = False
     LOAD = False
     test_p1 = True
     test_p2 = False
-    vs_Random = True
+    vs_Random = False
     vs_Legal = True
     if LOAD:
         p1 = joblib.load("p1.pkl")
@@ -656,21 +656,24 @@ if __name__=="__main__":
         p2.show_result()
     else:
         for episode in range(TRIAL):
-            # game = Game(p1,p2,SIZE)
-            # game.play()
-
-            if episode % 2 ==0:
-                game = Game(p1,p2,SIZE)
-            else:
-                game = Game(p2,p1,SIZE)
+            #vs random or legal
+            game = Game(p1,p2,SIZE)
             game.play()
 
+            #pg vs pg
+            # if episode % 2 ==0:
+            #     game = Game(p1,p2,SIZE)
+            # else:
+            #     game = Game(p2,p1,SIZE)
+            # game.play()
+
+            #self
             #p2 = copy.deepcopy(p1)#本当は最初にコピーしたいが、そうするとgpu実行時にエラーがでてしまう
             if episode % 500000 == 499999:
                 p1.show()
 
             if episode % 1000 == 0:
-                print ("episode pgpg",SIZE,episode)
+                print ("episode pg_l_mod",SIZE,Episode_size,episode)
 
                 p1.show_result()
 
