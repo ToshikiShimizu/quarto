@@ -626,7 +626,8 @@ ONE_HOT_ATTRIBUTE = True
 USE_CNN = True
 ONE_SAMPLE_PER_GAME = False
 Episode_size = 256#この数*各エピソードでの行動回数=バッチサイズ#128で勝率6割
-N_test = 10000
+N_test = 1000
+test_freq = 10000
 save_freq = 1000000
 if __name__=="__main__":
     GPU = 0
@@ -678,7 +679,7 @@ if __name__=="__main__":
                 p1.source = source
                 joblib.dump(p1,"4_"+str(episode+1)+".pkl")
 
-            if episode % 1000 == 0:
+            if episode % test_freq == 0:
                 print ("episode self",SIZE,Episode_size,episode)
 
                 p1.show_result()
