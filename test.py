@@ -71,6 +71,7 @@ class Game:
             self.main_player.win()
             self.sub_player.lose()
             self.sub_player.illegal()
+            self.sub_player.super_illegal()
             return False
 
         if pieces.exist[idx]==False:#illegal
@@ -89,6 +90,7 @@ class Game:
         if board.selected is None:
             self.main_player.lose()
             self.main_player.illegal()
+            self.main_player.super_illegal()
             self.sub_player.win()
             return False
 
@@ -339,8 +341,8 @@ class PolicyGradientPlayer(ComputerPlayer):
 
         #self.optimizer = optimizers.RMSpropGraves(lr=0.0025)
         #self.optimizer = optimizers.SGD(lr=0.01)
-        #self.optimizer = optimizers.Adam(alpha=1e-4)
-        self.optimizer = optimizers.Adam()
+        self.optimizer = optimizers.Adam(alpha=1e-4)
+        #self.optimizer = optimizers.Adam()
         #self.optimizer = optimizers.AdaGrad()
         #self.optimizer = optimizers.MomentumSGD(lr=1e-2)
         self.optimizer.setup(self.mlp)
@@ -362,7 +364,9 @@ class PolicyGradientPlayer(ComputerPlayer):
         self.this_result = 0
     def illegal(self):
         pass
-        #self.this_result = -1
+    def super_illegal(self):
+        pass
+        #self.this_result = -2#-2で上書き
 
     def decide_where_to_place(self, board, pieces):
         idx1 = np.random.choice(board.exist.shape[0])
@@ -617,14 +621,15 @@ def test_env(p1,p2,SIZE):
     p1.show_result()
     p2.show_result()
 
-MODIFY_PROB = True
+MODIFY_PROB = False
 ONE_HOT_ATTRIBUTE = True
 USE_CNN = True
 ONE_SAMPLE_PER_GAME = False
 Episode_size = 128#この数*各エピソードでの行動回数=バッチサイズ
 N_test = 1000
+save_freq = 100
 if __name__=="__main__":
-    GPU = 0
+    GPU = -1
     if GPU >= 0:
         import cupy as cp
         xp = cp
@@ -635,13 +640,13 @@ if __name__=="__main__":
     source = f.read()
     np.random.seed(1)
     TRIAL = 10000000
-    SIZE = 4
-    p1,p2 = set_player("pg","l",SIZE)
-    SAVE = False
+    SIZE = 2
+    p1,p2 = set_player("pg","pg",SIZE)
+    SAVE = True
     LOAD = False
     test_p1 = True
     test_p2 = False
-    vs_Random = False
+    vs_Random = True
     vs_Legal = True
     if LOAD:
         p1 = joblib.load("p1.pkl")
@@ -657,23 +662,26 @@ if __name__=="__main__":
     else:
         for episode in range(TRIAL):
             #vs random or legal
-            game = Game(p1,p2,SIZE)
-            game.play()
-
-            #pg vs pg
-            # if episode % 2 ==0:
-            #     game = Game(p1,p2,SIZE)
-            # else:
-            #     game = Game(p2,p1,SIZE)
+            # game = Game(p1,p2,SIZE)
             # game.play()
 
+            #pg vs pg
+            if episode % 2 ==0:
+                game = Game(p1,p2,SIZE)
+            else:
+                game = Game(p2,p1,SIZE)
+            game.play()
+
             #self
-            #p2 = copy.deepcopy(p1)#本当は最初にコピーしたいが、そうするとgpu実行時にエラーがでてしまう
-            if episode % 500000 == 499999:
-                p1.show()
+            p2 = copy.deepcopy(p1)#本当は最初にコピーしたいが、そうするとgpu実行時にエラーがでてしまう
+            if episode % save_freq == save_freq-1:
+                p1.source = source
+                p2.source = source
+                joblib.dump(p1,"p1"+".pkl")
+                joblib.dump(p2,"p2"+".pkl")
 
             if episode % 1000 == 0:
-                print ("episode pg_l_mod",SIZE,Episode_size,episode)
+                print ("episode self",SIZE,Episode_size,episode)
 
                 p1.show_result()
 
@@ -704,10 +712,3 @@ if __name__=="__main__":
                         t2.clear_result()
                         t2.train_mode = False
                         test_env(t1,t2,SIZE)
-        if SAVE:
-            p1.source = source
-            p2.source = source
-            p1.D = None
-            p2.D = None
-            joblib.dump(p1,"p1"+".pkl")
-            joblib.dump(p2,"p2"+".pkl")
