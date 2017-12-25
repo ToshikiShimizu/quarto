@@ -625,11 +625,11 @@ MODIFY_PROB = False
 ONE_HOT_ATTRIBUTE = True
 USE_CNN = True
 ONE_SAMPLE_PER_GAME = False
-Episode_size = 128#この数*各エピソードでの行動回数=バッチサイズ
-N_test = 1000
-save_freq = 100
+Episode_size = 256#この数*各エピソードでの行動回数=バッチサイズ#128で勝率6割
+N_test = 10000
+save_freq = 1000000
 if __name__=="__main__":
-    GPU = -1
+    GPU = 0
     if GPU >= 0:
         import cupy as cp
         xp = cp
@@ -640,7 +640,7 @@ if __name__=="__main__":
     source = f.read()
     np.random.seed(1)
     TRIAL = 10000000
-    SIZE = 2
+    SIZE = 4
     p1,p2 = set_player("pg","pg",SIZE)
     SAVE = True
     LOAD = False
@@ -676,9 +676,7 @@ if __name__=="__main__":
             p2 = copy.deepcopy(p1)#本当は最初にコピーしたいが、そうするとgpu実行時にエラーがでてしまう
             if episode % save_freq == save_freq-1:
                 p1.source = source
-                p2.source = source
-                joblib.dump(p1,"p1"+".pkl")
-                joblib.dump(p2,"p2"+".pkl")
+                joblib.dump(p1,"4_"+str(episode+1)+".pkl")
 
             if episode % 1000 == 0:
                 print ("episode self",SIZE,Episode_size,episode)
