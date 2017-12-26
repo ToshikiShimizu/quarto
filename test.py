@@ -625,7 +625,7 @@ MODIFY_PROB = False
 ONE_HOT_ATTRIBUTE = True
 USE_CNN = True
 ONE_SAMPLE_PER_GAME = False
-Episode_size = 256#この数*各エピソードでの行動回数=バッチサイズ#128で勝率6割
+Episode_size = 64#この数*各エピソードでの行動回数=バッチサイズ#128で勝率6割
 N_test = 1000
 test_freq = 10000
 save_freq = 1000000
@@ -677,7 +677,7 @@ if __name__=="__main__":
             p2 = copy.deepcopy(p1)#本当は最初にコピーしたいが、そうするとgpu実行時にエラーがでてしまう
             if episode % save_freq == save_freq-1:
                 p1.source = source
-                joblib.dump(p1,"4_"+str(episode+1)+".pkl")
+                joblib.dump(p1,"4_64_"+str(episode+1)+".pkl")
 
             if episode % test_freq == 0:
                 print ("episode self",SIZE,Episode_size,episode)
