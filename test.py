@@ -625,7 +625,7 @@ MODIFY_PROB = False
 ONE_HOT_ATTRIBUTE = True
 USE_CNN = True
 ONE_SAMPLE_PER_GAME = False
-Episode_size = 64#この数*各エピソードでの行動回数=バッチサイズ#128で勝率6割
+Episode_size = 16#この数*各エピソードでの行動回数=バッチサイズ#128で勝率6割
 N_test = 1000
 test_freq = 10000
 save_freq = 1000000
@@ -642,7 +642,7 @@ if __name__=="__main__":
     np.random.seed(1)
     TRIAL = 10000000
     SIZE = 4
-    p1,p2 = set_player("pg","pg",SIZE)
+    p1,p2 = set_player("pg","l",SIZE)
     SAVE = True
     LOAD = False
     test_p1 = True
@@ -650,7 +650,7 @@ if __name__=="__main__":
     vs_Random = True
     vs_Legal = True
     if LOAD:
-        p1 = joblib.load("p1.pkl")
+        p1 = joblib.load("4_64.pkl")
         #p2 = joblib.load("p2.pkl")
         p1.clear_result()
         p1.train_mode = False
@@ -677,7 +677,8 @@ if __name__=="__main__":
             p2 = copy.deepcopy(p1)#本当は最初にコピーしたいが、そうするとgpu実行時にエラーがでてしまう
             if episode % save_freq == save_freq-1:
                 p1.source = source
-                joblib.dump(p1,"4_64_"+str(episode+1)+".pkl")
+                joblib.dump(p1,"4_16_"+str(episode+1)+".pkl")
+
 
             if episode % test_freq == 0:
                 print ("episode self",SIZE,Episode_size,episode)
