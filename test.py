@@ -330,7 +330,7 @@ class PolicyGradientPlayer(ComputerPlayer):
         self.OUT = 2**self.SIZE + self.SIZE**2
         if USE_CNN:
             self.IN = (self.SIZE**2)*(2**(self.SIZE+1)+2)
-            self.n_channel = 4*self.IN
+            self.n_channel = 4*self.IN * 2
 
 
             #self.mlp = CNN(self.n_channel, self.OUT, self.SIZE,chainer.initializers.HeNormal())
@@ -341,10 +341,10 @@ class PolicyGradientPlayer(ComputerPlayer):
 
         #self.optimizer = optimizers.RMSpropGraves(lr=0.0025)
         #self.optimizer = optimizers.SGD(lr=0.01)
-        self.optimizer = optimizers.Adam(alpha=1e-4)
-        #self.optimizer = optimizers.Adam()
+        self.optimizer = optimizers.Adam(alpha=1e-4)#best
+        #self.optimizer = optimizers.Adam(1e-5)
         #self.optimizer = optimizers.AdaGrad()
-        #self.optimizer = optimizers.MomentumSGD(lr=1e-2)
+        #self.optimizer = optimizers.MomentumSGD(lr=1e-3)
         self.optimizer.setup(self.mlp)
         self.optimizer.add_hook(chainer.optimizer.WeightDecay(1e-4))
 
@@ -625,7 +625,7 @@ MODIFY_PROB = False
 ONE_HOT_ATTRIBUTE = True
 USE_CNN = True
 ONE_SAMPLE_PER_GAME = False
-Episode_size = 16#この数*各エピソードでの行動回数=バッチサイズ#128で勝率6割
+Episode_size = 64#この数*各エピソードでの行動回数=バッチサイズ#128で勝率6割
 N_test = 1000
 test_freq = 10000
 save_freq = 1000000
@@ -677,11 +677,11 @@ if __name__=="__main__":
             p2 = copy.deepcopy(p1)#本当は最初にコピーしたいが、そうするとgpu実行時にエラーがでてしまう
             if episode % save_freq == save_freq-1:
                 p1.source = source
-                joblib.dump(p1,"4_16_"+str(episode+1)+".pkl")
+                joblib.dump(p1,"4_64_ch2t"+str(episode+1)+".pkl")
 
 
             if episode % test_freq == 0:
-                print ("episode self",SIZE,Episode_size,episode)
+                print ("episode self _ch2t",SIZE,Episode_size,episode)
 
                 p1.show_result()
 
